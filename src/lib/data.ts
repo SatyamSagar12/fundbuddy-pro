@@ -10,6 +10,16 @@ export type Client = {
   pan: string | null;
   nominee_name: string | null;
   nominee_dob: string | null;
+  dob: string | null;
+  bank_account_no: string | null;
+  bank_name: string | null;
+  ifsc_code: string | null;
+  micr_code: string | null;
+  branch_name: string | null;
+  nominee_pan: string | null;
+  nominee_mobile: string | null;
+  nominee_email: string | null;
+  nominee_relation: string | null;
   created_at: string;
 };
 
