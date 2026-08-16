@@ -48,7 +48,7 @@ function SettingsPage() {
     }
     const { error } = await supabase
       .from("profiles")
-      .upsert({ id: data.user.id, full_name: fullName, email: data.user.email });
+      .upsert({ id: data.user.id, full_name: fullName, email: data.user.email ?? null });
     setSaving(false);
     if (error) {
       toast.error("Something went wrong");

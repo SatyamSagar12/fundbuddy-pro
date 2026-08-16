@@ -39,13 +39,19 @@ function AuthPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) return toast.error(error.message || "Something went wrong");
+    if (error) {
+      toast.error(error.message || "Something went wrong");
+      return;
+    }
     navigate({ to: "/dashboard", replace: true });
   }
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!fullName.trim()) return toast.error("Please fill required fields");
+    if (!fullName.trim()) {
+      toast.error("Please fill required fields");
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -56,7 +62,10 @@ function AuthPage() {
       },
     });
     setLoading(false);
-    if (error) return toast.error(error.message || "Something went wrong");
+    if (error) {
+      toast.error(error.message || "Something went wrong");
+      return;
+    }
     toast.success("Account created. You can sign in now.");
   }
 
@@ -65,7 +74,10 @@ function AuthPage() {
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
-    if (result.error) return toast.error("Something went wrong");
+    if (result.error) {
+      toast.error("Something went wrong");
+      return;
+    }
     if (result.redirected) return;
     navigate({ to: "/dashboard", replace: true });
   }
