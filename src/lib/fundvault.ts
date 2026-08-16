@@ -2,6 +2,20 @@ import { z } from "zod";
 
 export const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 export const MOBILE_REGEX = /^[6-9]\d{9}$/;
+export const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+export const MICR_REGEX = /^\d{9}$/;
+export const ACCOUNT_NO_REGEX = /^\d{9,18}$/;
+
+export const NOMINEE_RELATIONS = [
+  "Spouse",
+  "Son",
+  "Daughter",
+  "Father",
+  "Mother",
+  "Brother",
+  "Sister",
+  "Other",
+] as const;
 
 export const clientSchema = z.object({
   name: z.string().trim().min(2, "Full name is required").max(100),
@@ -14,8 +28,36 @@ export const clientSchema = z.object({
     .toUpperCase()
     .regex(PAN_REGEX, "PAN must look like ABCDE1234F")
     .or(z.literal("")),
+  dob: z.string().optional().or(z.literal("")),
+  bank_account_no: z
+    .string()
+    .trim()
+    .regex(ACCOUNT_NO_REGEX, "Account number must be 9–18 digits")
+    .or(z.literal("")),
+  bank_name: z.string().trim().max(120).optional().or(z.literal("")),
+  ifsc_code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(IFSC_REGEX, "IFSC must look like HDFC0001234")
+    .or(z.literal("")),
+  micr_code: z.string().trim().regex(MICR_REGEX, "MICR code must be 9 digits").or(z.literal("")),
+  branch_name: z.string().trim().max(120).optional().or(z.literal("")),
   nominee_name: z.string().trim().max(100).optional().or(z.literal("")),
   nominee_dob: z.string().optional().or(z.literal("")),
+  nominee_pan: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(PAN_REGEX, "Nominee PAN must look like ABCDE1234F")
+    .or(z.literal("")),
+  nominee_mobile: z
+    .string()
+    .trim()
+    .regex(MOBILE_REGEX, "Enter a valid 10-digit nominee mobile number")
+    .or(z.literal("")),
+  nominee_email: z.string().trim().email("Enter a valid nominee email").max(255).or(z.literal("")),
+  nominee_relation: z.string().trim().max(40).optional().or(z.literal("")),
 });
 
 export type ClientInput = z.infer<typeof clientSchema>;
@@ -47,13 +89,21 @@ export const inr = (value: number) =>
   }).format(value || 0);
 
 export const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  value
+    ? new Date(value).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "—";
 
 export function toCsv(rows: Record<string, unknown>[]) {
   if (!rows.length) return "";
   const headers = Object.keys(rows[0]!);
   const escape = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  return [headers.join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))].join("\n");
+  return [headers.join(","), ...rows.map((r) => headers.map((h) => escape(r[h])).join(","))].join(
+    "\n",
+  );
 }
 
 export function downloadCsv(filename: string, rows: Record<string, unknown>[]) {

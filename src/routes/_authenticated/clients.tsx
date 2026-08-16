@@ -5,22 +5,49 @@ import { Plus, Search, Pencil, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { clientsQuery, investmentsQuery, sipsQuery, type Client } from "@/lib/data";
-import { clientSchema, formatDate, inr } from "@/lib/fundvault";
+import { NOMINEE_RELATIONS, clientSchema, formatDate, inr } from "@/lib/fundvault";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/clients")({
   head: () => ({
     meta: [
       { title: "Clients — FundVault Lite" },
-      { name: "description", content: "Add, search, edit and manage mutual fund clients with nominee, PAN and contact details." },
+      {
+        name: "description",
+        content:
+          "Add, search, edit and manage mutual fund clients with nominee, PAN and contact details.",
+      },
       { property: "og:title", content: "Clients — FundVault Lite" },
-      { property: "og:description", content: "Client master for your mutual fund advisory practice." },
+      {
+        property: "og:description",
+        content: "Client master for your mutual fund advisory practice.",
+      },
     ],
   }),
   component: ClientsPage,
@@ -32,8 +59,18 @@ const EMPTY = {
   email: "",
   address: "",
   pan: "",
+  dob: "",
+  bank_account_no: "",
+  bank_name: "",
+  ifsc_code: "",
+  micr_code: "",
+  branch_name: "",
   nominee_name: "",
   nominee_dob: "",
+  nominee_pan: "",
+  nominee_mobile: "",
+  nominee_email: "",
+  nominee_relation: "",
 };
 
 function ClientsPage() {
@@ -55,13 +92,26 @@ function ClientsPage() {
 
   const save = useMutation({
     mutationFn: async (values: typeof EMPTY) => {
+      // Blank optional fields are stored as NULL rather than empty strings.
+      const orNull = (v: string) => (v.trim() ? v.trim() : null);
       const payload = {
-        ...values,
-        pan: values.pan ? values.pan.toUpperCase() : null,
-        email: values.email || null,
-        address: values.address || null,
-        nominee_name: values.nominee_name || null,
-        nominee_dob: values.nominee_dob || null,
+        name: values.name.trim(),
+        mobile: values.mobile.trim(),
+        email: orNull(values.email),
+        address: orNull(values.address),
+        pan: orNull(values.pan.toUpperCase()),
+        dob: orNull(values.dob),
+        bank_account_no: orNull(values.bank_account_no),
+        bank_name: orNull(values.bank_name),
+        ifsc_code: orNull(values.ifsc_code.toUpperCase()),
+        micr_code: orNull(values.micr_code),
+        branch_name: orNull(values.branch_name),
+        nominee_name: orNull(values.nominee_name),
+        nominee_dob: orNull(values.nominee_dob),
+        nominee_pan: orNull(values.nominee_pan.toUpperCase()),
+        nominee_mobile: orNull(values.nominee_mobile),
+        nominee_email: orNull(values.nominee_email),
+        nominee_relation: orNull(values.nominee_relation),
       };
       const res = editing
         ? await supabase.from("clients").update(payload).eq("id", editing.id)
@@ -114,8 +164,18 @@ function ClientsPage() {
       email: c.email ?? "",
       address: c.address ?? "",
       pan: c.pan ?? "",
+      dob: c.dob ?? "",
+      bank_account_no: c.bank_account_no ?? "",
+      bank_name: c.bank_name ?? "",
+      ifsc_code: c.ifsc_code ?? "",
+      micr_code: c.micr_code ?? "",
+      branch_name: c.branch_name ?? "",
       nominee_name: c.nominee_name ?? "",
       nominee_dob: c.nominee_dob ?? "",
+      nominee_pan: c.nominee_pan ?? "",
+      nominee_mobile: c.nominee_mobile ?? "",
+      nominee_email: c.nominee_email ?? "",
+      nominee_relation: c.nominee_relation ?? "",
     });
     setOpen(true);
   }
@@ -163,10 +223,20 @@ function ClientsPage() {
                   <TableCell className="hidden sm:table-cell">{c.pan ?? "—"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" aria-label="View" onClick={() => setViewing(c)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="View"
+                        onClick={() => setViewing(c)}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" aria-label="Edit" onClick={() => openEdit(c)}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Edit"
+                        onClick={() => openEdit(c)}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
@@ -174,7 +244,11 @@ function ClientsPage() {
                         variant="ghost"
                         aria-label="Delete"
                         onClick={() => {
-                          if (confirm(`Delete ${c.name}? This also removes their investments and SIPs.`))
+                          if (
+                            confirm(
+                              `Delete ${c.name}? This also removes their investments and SIPs.`,
+                            )
+                          )
                             remove.mutate(c.id);
                         }}
                       >
@@ -198,39 +272,165 @@ function ClientsPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit client" : "Add client"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={submit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Full name *">
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </Field>
-              <Field label="Mobile number *">
-                <Input value={form.mobile} maxLength={10} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
-              </Field>
-              <Field label="Email">
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </Field>
-              <Field label="PAN number">
-                <Input
-                  value={form.pan}
-                  maxLength={10}
-                  placeholder="ABCDE1234F"
-                  onChange={(e) => setForm({ ...form, pan: e.target.value.toUpperCase() })}
+          <form onSubmit={submit} className="space-y-6">
+            <section className="space-y-4">
+              <SectionTitle>Client details</SectionTitle>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Full name *">
+                  <Input
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  />
+                </Field>
+                <Field label="Mobile number *">
+                  <Input
+                    value={form.mobile}
+                    maxLength={10}
+                    onChange={(e) => setForm({ ...form, mobile: e.target.value })}
+                  />
+                </Field>
+                <Field label="Email">
+                  <Input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  />
+                </Field>
+                <Field label="Date of birth">
+                  <Input
+                    type="date"
+                    value={form.dob}
+                    onChange={(e) => setForm({ ...form, dob: e.target.value })}
+                  />
+                </Field>
+                <Field label="PAN number">
+                  <Input
+                    value={form.pan}
+                    maxLength={10}
+                    placeholder="ABCDE1234F"
+                    onChange={(e) => setForm({ ...form, pan: e.target.value.toUpperCase() })}
+                  />
+                </Field>
+              </div>
+              <Field label="Address">
+                <Textarea
+                  rows={2}
+                  value={form.address}
+                  onChange={(e) => setForm({ ...form, address: e.target.value })}
                 />
               </Field>
-              <Field label="Nominee name">
-                <Input value={form.nominee_name} onChange={(e) => setForm({ ...form, nominee_name: e.target.value })} />
-              </Field>
-              <Field label="Nominee date of birth">
-                <Input type="date" value={form.nominee_dob} onChange={(e) => setForm({ ...form, nominee_dob: e.target.value })} />
-              </Field>
-            </div>
-            <Field label="Address">
-              <Textarea rows={2} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-            </Field>
+            </section>
+
+            <section className="space-y-4">
+              <SectionTitle>Bank details</SectionTitle>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Bank account number">
+                  <Input
+                    inputMode="numeric"
+                    maxLength={18}
+                    value={form.bank_account_no}
+                    onChange={(e) =>
+                      setForm({ ...form, bank_account_no: e.target.value.replace(/\D/g, "") })
+                    }
+                  />
+                </Field>
+                <Field label="Bank name">
+                  <Input
+                    value={form.bank_name}
+                    onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
+                  />
+                </Field>
+                <Field label="IFSC code">
+                  <Input
+                    maxLength={11}
+                    placeholder="HDFC0001234"
+                    value={form.ifsc_code}
+                    onChange={(e) => setForm({ ...form, ifsc_code: e.target.value.toUpperCase() })}
+                  />
+                </Field>
+                <Field label="MICR code">
+                  <Input
+                    inputMode="numeric"
+                    maxLength={9}
+                    placeholder="400240001"
+                    value={form.micr_code}
+                    onChange={(e) =>
+                      setForm({ ...form, micr_code: e.target.value.replace(/\D/g, "") })
+                    }
+                  />
+                </Field>
+                <Field label="Branch name">
+                  <Input
+                    value={form.branch_name}
+                    onChange={(e) => setForm({ ...form, branch_name: e.target.value })}
+                  />
+                </Field>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <SectionTitle>Nominee details</SectionTitle>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Nominee name">
+                  <Input
+                    value={form.nominee_name}
+                    onChange={(e) => setForm({ ...form, nominee_name: e.target.value })}
+                  />
+                </Field>
+                <Field label="Nominee date of birth">
+                  <Input
+                    type="date"
+                    value={form.nominee_dob}
+                    onChange={(e) => setForm({ ...form, nominee_dob: e.target.value })}
+                  />
+                </Field>
+                <Field label="Nominee PAN">
+                  <Input
+                    maxLength={10}
+                    placeholder="ABCDE1234F"
+                    value={form.nominee_pan}
+                    onChange={(e) =>
+                      setForm({ ...form, nominee_pan: e.target.value.toUpperCase() })
+                    }
+                  />
+                </Field>
+                <Field label="Nominee mobile number">
+                  <Input
+                    maxLength={10}
+                    value={form.nominee_mobile}
+                    onChange={(e) => setForm({ ...form, nominee_mobile: e.target.value })}
+                  />
+                </Field>
+                <Field label="Nominee email">
+                  <Input
+                    type="email"
+                    value={form.nominee_email}
+                    onChange={(e) => setForm({ ...form, nominee_email: e.target.value })}
+                  />
+                </Field>
+                <Field label="Relation with client">
+                  <Select
+                    value={form.nominee_relation}
+                    onValueChange={(v) => setForm({ ...form, nominee_relation: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select relation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NOMINEE_RELATIONS.map((r) => (
+                        <SelectItem key={r} value={r}>
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            </section>
             <DialogFooter>
               <Button type="submit" disabled={save.isPending}>
                 {save.isPending ? "Saving…" : "Save client"}
@@ -247,32 +447,56 @@ function ClientsPage() {
           </DialogHeader>
           {viewing && (
             <div className="space-y-4 text-sm">
+              <SectionTitle>Client details</SectionTitle>
               <dl className="grid grid-cols-2 gap-3">
                 <Detail label="Mobile" value={viewing.mobile} />
                 <Detail label="Email" value={viewing.email ?? "—"} />
+                <Detail label="Date of birth" value={formatDate(viewing.dob)} />
                 <Detail label="PAN" value={viewing.pan ?? "—"} />
-                <Detail label="Nominee" value={viewing.nominee_name ?? "—"} />
-                <Detail label="Nominee DOB" value={formatDate(viewing.nominee_dob)} />
                 <Detail label="Address" value={viewing.address ?? "—"} />
               </dl>
+
+              <SectionTitle>Bank details</SectionTitle>
+              <dl className="grid grid-cols-2 gap-3">
+                <Detail label="Account number" value={viewing.bank_account_no ?? "—"} />
+                <Detail label="Bank name" value={viewing.bank_name ?? "—"} />
+                <Detail label="IFSC code" value={viewing.ifsc_code ?? "—"} />
+                <Detail label="MICR code" value={viewing.micr_code ?? "—"} />
+                <Detail label="Branch name" value={viewing.branch_name ?? "—"} />
+              </dl>
+
+              <SectionTitle>Nominee details</SectionTitle>
+              <dl className="grid grid-cols-2 gap-3">
+                <Detail label="Nominee" value={viewing.nominee_name ?? "—"} />
+                <Detail label="Nominee DOB" value={formatDate(viewing.nominee_dob)} />
+                <Detail label="Nominee PAN" value={viewing.nominee_pan ?? "—"} />
+                <Detail label="Nominee mobile" value={viewing.nominee_mobile ?? "—"} />
+                <Detail label="Nominee email" value={viewing.nominee_email ?? "—"} />
+                <Detail label="Relation" value={viewing.nominee_relation ?? "—"} />
+              </dl>
+
               <div>
                 <p className="mb-2 font-medium">Investments</p>
-                {investments.filter((i) => i.client_id === viewing.id).map((i) => (
-                  <p key={i.id} className="text-muted-foreground">
-                    {i.scheme} — {inr(Number(i.amount))} · {formatDate(i.date)}
-                  </p>
-                ))}
+                {investments
+                  .filter((i) => i.client_id === viewing.id)
+                  .map((i) => (
+                    <p key={i.id} className="text-muted-foreground">
+                      {i.scheme} — {inr(Number(i.amount))} · {formatDate(i.date)}
+                    </p>
+                  ))}
                 {!investments.some((i) => i.client_id === viewing.id) && (
                   <p className="text-muted-foreground">No data found</p>
                 )}
               </div>
               <div>
                 <p className="mb-2 font-medium">SIPs</p>
-                {sips.filter((s) => s.client_id === viewing.id).map((s) => (
-                  <p key={s.id} className="text-muted-foreground">
-                    {s.scheme} — {inr(Number(s.amount))} · {s.frequency} · {s.status}
-                  </p>
-                ))}
+                {sips
+                  .filter((s) => s.client_id === viewing.id)
+                  .map((s) => (
+                    <p key={s.id} className="text-muted-foreground">
+                      {s.scheme} — {inr(Number(s.amount))} · {s.frequency} · {s.status}
+                    </p>
+                  ))}
                 {!sips.some((s) => s.client_id === viewing.id) && (
                   <p className="text-muted-foreground">No data found</p>
                 )}
@@ -282,6 +506,14 @@ function ClientsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="border-b pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      {children}
+    </h3>
   );
 }
 
