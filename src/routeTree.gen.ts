@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedInvestmentsRouteImport } from './routes/_authenticated/investments'
+import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedSipsRouteImport } from './routes/_authenticated/sips'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +48,11 @@ const AuthenticatedInvestmentsRoute =
     path: '/investments',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReportsRoute = AuthenticatedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSipsRoute = AuthenticatedSipsRouteImport.update({
   id: '/sips',
   path: '/sips',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/clients': typeof AuthenticatedClientsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/investments': typeof AuthenticatedInvestmentsRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/sips': typeof AuthenticatedSipsRoute
 }
 export interface FileRoutesByTo {
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/clients': typeof AuthenticatedClientsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/investments': typeof AuthenticatedInvestmentsRoute
+  '/reports': typeof AuthenticatedReportsRoute
   '/sips': typeof AuthenticatedSipsRoute
 }
 export interface FileRoutesById {
@@ -77,14 +85,28 @@ export interface FileRoutesById {
   '/_authenticated/clients': typeof AuthenticatedClientsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/investments': typeof AuthenticatedInvestmentsRoute
+  '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/sips': typeof AuthenticatedSipsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/clients' | '/dashboard' | '/investments' | '/sips'
+    | '/'
+    | '/auth'
+    | '/clients'
+    | '/dashboard'
+    | '/investments'
+    | '/reports'
+    | '/sips'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/clients' | '/dashboard' | '/investments' | '/sips'
+  to:
+    | '/'
+    | '/auth'
+    | '/clients'
+    | '/dashboard'
+    | '/investments'
+    | '/reports'
+    | '/sips'
   id:
     | '__root__'
     | '/'
@@ -93,6 +115,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients'
     | '/_authenticated/dashboard'
     | '/_authenticated/investments'
+    | '/_authenticated/reports'
     | '/_authenticated/sips'
   fileRoutesById: FileRoutesById
 }
@@ -146,6 +169,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInvestmentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports': {
+      id: '/_authenticated/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthenticatedReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/sips': {
       id: '/_authenticated/sips'
       path: '/sips'
@@ -160,6 +190,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsRoute: typeof AuthenticatedClientsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedInvestmentsRoute: typeof AuthenticatedInvestmentsRoute
+  AuthenticatedReportsRoute: typeof AuthenticatedReportsRoute
   AuthenticatedSipsRoute: typeof AuthenticatedSipsRoute
 }
 
@@ -167,6 +198,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientsRoute: AuthenticatedClientsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedInvestmentsRoute: AuthenticatedInvestmentsRoute,
+  AuthenticatedReportsRoute: AuthenticatedReportsRoute,
   AuthenticatedSipsRoute: AuthenticatedSipsRoute,
 }
 
