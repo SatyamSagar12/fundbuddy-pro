@@ -17,35 +17,65 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          bank_account_no: string | null
+          bank_name: string | null
+          branch_name: string | null
           created_at: string
+          dob: string | null
           email: string | null
           id: string
+          ifsc_code: string | null
+          micr_code: string | null
           mobile: string
           name: string
           nominee_dob: string | null
+          nominee_email: string | null
+          nominee_mobile: string | null
           nominee_name: string | null
+          nominee_pan: string | null
+          nominee_relation: string | null
           pan: string | null
         }
         Insert: {
           address?: string | null
+          bank_account_no?: string | null
+          bank_name?: string | null
+          branch_name?: string | null
           created_at?: string
+          dob?: string | null
           email?: string | null
           id?: string
+          ifsc_code?: string | null
+          micr_code?: string | null
           mobile: string
           name: string
           nominee_dob?: string | null
+          nominee_email?: string | null
+          nominee_mobile?: string | null
           nominee_name?: string | null
+          nominee_pan?: string | null
+          nominee_relation?: string | null
           pan?: string | null
         }
         Update: {
           address?: string | null
+          bank_account_no?: string | null
+          bank_name?: string | null
+          branch_name?: string | null
           created_at?: string
+          dob?: string | null
           email?: string | null
           id?: string
+          ifsc_code?: string | null
+          micr_code?: string | null
           mobile?: string
           name?: string
           nominee_dob?: string | null
+          nominee_email?: string | null
+          nominee_mobile?: string | null
           nominee_name?: string | null
+          nominee_pan?: string | null
+          nominee_relation?: string | null
           pan?: string | null
         }
         Relationships: []
