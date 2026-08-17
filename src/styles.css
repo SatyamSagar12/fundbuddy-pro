@@ -99,11 +99,15 @@
   --border: oklch(0.905 0.014 240);
   --input: oklch(0.905 0.014 240);
   --ring: oklch(0.52 0.11 195);
-  --chart-1: oklch(0.52 0.11 195);
-  --chart-2: oklch(0.6 0.13 155);
-  --chart-3: oklch(0.38 0.07 255);
-  --chart-4: oklch(0.75 0.14 75);
-  --chart-5: oklch(0.62 0.13 300);
+  /* Categorical chart slots — fixed order, validated for CVD separation
+     (protan/deutan ΔE ≥ 8) and contrast against the white card surface.
+     Order is the colorblind-safety mechanism: teal and green are kept
+     non-adjacent deliberately. Do not reorder or cycle past slot 5. */
+  --chart-1: oklch(0.54 0.13 220);
+  --chart-2: oklch(0.72 0.15 70);
+  --chart-3: oklch(0.47 0.14 262);
+  --chart-4: oklch(0.62 0.15 148);
+  --chart-5: oklch(0.55 0.17 310);
   --sidebar: oklch(0.26 0.05 255);
   --sidebar-foreground: oklch(0.9 0.015 240);
   --sidebar-primary: oklch(0.62 0.12 195);
@@ -135,11 +139,13 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  /* Dark-mode steps are selected against the dark card surface, not flipped
+     from the light values. Same hue families, same slot order. */
+  --chart-1: oklch(0.6 0.13 205);
+  --chart-2: oklch(0.66 0.15 72);
+  --chart-3: oklch(0.6 0.17 265);
+  --chart-4: oklch(0.66 0.15 155);
+  --chart-5: oklch(0.62 0.18 310);
   --sidebar: oklch(0.208 0.042 265.755);
   --sidebar-foreground: oklch(0.984 0.003 247.858);
   --sidebar-primary: oklch(0.488 0.243 264.376);
