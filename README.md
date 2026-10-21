@@ -527,3 +527,10 @@ npm run android:sync   # builds the app's web files and copies them into android
 npm run android:open   # opens the project in Android Studio
 ```
 
+
+## Hosting on Cloudflare
+
+The website is also published on Cloudflare Pages at https://fundbuddy-pro.pages.dev.
+`.github/workflows/cloudflare.yml` republishes it whenever `main` changes, once the
+`CLOUDFLARE_API_TOKEN` (with "Cloudflare Pages: Edit" permission) and `CLOUDFLARE_ACCOUNT_ID`
+repository secrets are added under Settings → Secrets and variables → Actions.
