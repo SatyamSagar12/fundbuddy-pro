@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { toast } from "sonner";
+import { saveFile } from "./native";
 
 export const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 export const MOBILE_REGEX = /^[6-9]\d{9}$/;
@@ -228,13 +230,12 @@ export function toCsv(rows: Record<string, unknown>[]) {
   );
 }
 
-export function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+export async function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
   const csv = toCsv(rows);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
+  try {
+    await saveFile(blob, filename);
+  } catch {
+    toast.error("Something went wrong");
+  }
 }

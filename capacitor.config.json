@@ -1,0 +1,12 @@
+{
+  "appId": "com.satyamsagar.fundvault",
+  "appName": "FundVault Lite",
+  "webDir": "dist/client",
+  "backgroundColor": "#1b2840",
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native",
+      "style": "DARK"
+    }
+  }
+}

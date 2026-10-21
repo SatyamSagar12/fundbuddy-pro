@@ -1,8 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ShieldCheck, Users, Repeat, FileBarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isNativeApp } from "@/lib/native";
 
 export const Route = createFileRoute("/")({
+  // The marketing page is for the website; the Android app opens on the dashboard
+  // (which sends signed-out users to the sign-in screen).
+  beforeLoad: () => {
+    if (typeof window !== "undefined" && isNativeApp()) throw redirect({ to: "/dashboard" });
+  },
   head: () => ({
     meta: [
       { title: "FundVault Lite — Mutual Fund Management System" },
