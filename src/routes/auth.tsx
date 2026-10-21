@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { isNativeApp, publicOrigin } from "@/lib/native";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const native = isNativeApp();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -57,7 +59,7 @@ function AuthPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${publicOrigin()}/dashboard`,
         data: { full_name: fullName },
       },
     });
@@ -133,12 +135,18 @@ function AuthPage() {
               </TabsContent>
             </Tabs>
 
-            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
-            </div>
-            <Button variant="outline" className="w-full" onClick={googleSignIn}>
-              Continue with Google
-            </Button>
+            {/* Google blocks its sign-in page inside app web views, so the Android app offers
+                e-mail sign-in only. */}
+            {!native && (
+              <>
+                <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
+                </div>
+                <Button variant="outline" className="w-full" onClick={googleSignIn}>
+                  Continue with Google
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
