@@ -1,0 +1,41 @@
+name: Gateway check (temporary)
+on:
+  push:
+    branches: ["claude/gateway-diagnose"]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe gateways and Supabase
+        run: |
+          probe() {
+            name=$1; base=$2; key=$3
+            echo "================ $name  ($base)"
+            echo "--- GET /"
+            curl -sS -m 20 -o /dev/null -w "%{http_code}\n" "$base/" || true
+            echo "--- GET /auth/v1/settings"
+            curl -sS -m 20 -w "\nHTTP %{http_code}\n" "$base/auth/v1/settings" -H "apikey: $key" | tail -c 400 || true
+            echo "--- OPTIONS preflight (origin https://localhost)"
+            curl -sS -m 20 -o /dev/null -D - -X OPTIONS "$base/auth/v1/token?grant_type=password" \
+              -H "Origin: https://localhost" -H "Access-Control-Request-Method: POST" \
+              -H "Access-Control-Request-Headers: apikey,authorization,content-type,x-client-info,x-supabase-api-version" \
+              | grep -iE "^HTTP|access-control" || true
+            echo "--- POST wrong password (origin https://localhost)"
+            curl -sS -m 20 -D - -X POST "$base/auth/v1/token?grant_type=password" \
+              -H "Origin: https://localhost" -H "apikey: $key" -H "content-type: application/json" \
+              -d '{"email":"nobody@example.com","password":"wrong-password"}' \
+              | grep -iE "^HTTP|access-control-allow-origin|msg|error" || true
+            echo "--- GET /rest/v1/ (anon)"
+            curl -sS -m 20 -o /dev/null -w "HTTP %{http_code}\n" "$base/rest/v1/clients?select=id&limit=1" -H "apikey: $key" -H "Origin: https://localhost" || true
+          }
+          FUND_KEY=sb_publishable_iNueS_IOeMlZy5a2QRsm7Q_Iqb3nj8h
+          SCHOOL_KEY=sb_publishable_LfUOsnlbP8WXb7LmHbw55A_cbKOepBJ
+          probe "FundBuddy gateway" https://fundbuddy-pro-api.pages.dev $FUND_KEY
+          probe "FundBuddy direct" https://tojgfdjfmmnywjjrzdkn.supabase.co $FUND_KEY
+          probe "School gateway" https://school-meal-hub-api.pages.dev $SCHOOL_KEY
+          probe "School direct" https://aphrzrfcwqwmuumqnfsz.supabase.co $SCHOOL_KEY
+          echo "================ websites"
+          for u in https://fundbuddy-pro.pages.dev/auth https://school-meal-hub.pages.dev/auth https://fundbuddy-pro.lovable.app/auth; do
+            printf "%s -> " "$u"; curl -sS -m 20 -o page.html -w "%{http_code}\n" "$u" || true
+            grep -o 'supabase.co\|-api.pages.dev' page.html | sort | uniq -c || true
+          done
