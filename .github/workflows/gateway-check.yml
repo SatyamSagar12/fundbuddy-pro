@@ -8,13 +8,15 @@ jobs:
     steps:
       - name: Find the database each live website uses
         run: |
-          for h in aphrzrfcwqwmuumqnfsz.supabase.co tojgfdjfmmnywjjrzdkn.supabase.co; do echo "DNS $h: $(dig +short $h | tr '\n' ' ')"; done
-          for site in https://school-meal-hub.lovable.app https://schoolmealhub.lovable.app https://school-meal-hub-mdm.lovable.app https://fundbuddy-pro.lovable.app; do
-            code=$(curl -sS -m 20 -o page.html -w "%{http_code}" "$site/" || echo 000)
-            echo "=== $site -> $code"
-            [ "$code" = "200" ] || continue
+          for site in https://fundbuddy-pro.lovable.app https://fundbuddy-pro.pages.dev; do
+            echo "=== $site"
+            curl -sS --compressed -m 20 -o page.html "$site/auth" || true
             grep -o '<title>[^<]*' page.html | head -1
-            for js in $(grep -oE '/assets/[A-Za-z0-9_.-]+\.js' page.html | sort -u); do
-              curl -sS -m 20 "$site$js" | grep -oE '[a-z0-9]{20}\.supabase\.co|sb_publishable_[A-Za-z0-9_-]+' | sort -u | sed "s#^#  $js: #"
+            for js in $(grep -oE '/assets/[A-Za-z0-9_.~-]+\.js' page.html | sort -u); do
+              curl -sS --compressed -m 20 "$site$js" | grep -oE '[a-z0-9]{20}\.supabase\.co|sb_publishable_[A-Za-z0-9_-]+|[a-z0-9-]+-api\.pages\.dev' | sort -u | sed "s#^#  $js: #"
             done
+          done
+          echo "=== settings of each candidate project"
+          for ref in tojgfdjfmmnywjjrzdkn; do
+            curl -sS -m 20 "https://$ref.supabase.co/auth/v1/settings" -H "apikey: sb_publishable_iNueS_IOeMlZy5a2QRsm7Q_Iqb3nj8h" | head -c 200; echo
           done
