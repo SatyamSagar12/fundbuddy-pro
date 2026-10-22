@@ -20,7 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      # Supabase settings come from the committed .env file.
+      # Other Supabase settings come from the committed .env file.
+      # Supabase traffic goes through our Cloudflare gateway (supabase-gateway/) because
+      # several Indian internet providers block *.supabase.co ("Failed to fetch").
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://fundbuddy-pro-api.pages.dev' }}
       # Published website, used for links in sign-up e-mails sent from the app.
       VITE_PUBLIC_SITE_URL: ${{ vars.VITE_PUBLIC_SITE_URL || 'https://fundbuddy-pro.lovable.app' }}
     steps:

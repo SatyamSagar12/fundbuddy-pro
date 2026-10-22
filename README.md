@@ -534,3 +534,12 @@ The website is also published on Cloudflare Pages at https://fundbuddy-pro.pages
 `.github/workflows/cloudflare.yml` republishes it whenever `main` changes, once the
 `CLOUDFLARE_API_TOKEN` (with "Cloudflare Pages: Edit" permission) and `CLOUDFLARE_ACCOUNT_ID`
 repository secrets are added under Settings → Secrets and variables → Actions.
+
+## Supabase gateway (for Indian networks)
+
+Several Indian internet providers (Jio, Airtel, ACT) block `*.supabase.co`, where Lovable
+Cloud keeps this app's database, so sign-in fails with "Failed to fetch". The Android app and
+the Cloudflare website therefore talk to `https://fundbuddy-pro-api.pages.dev`, a small Cloudflare Pages
+Function in `supabase-gateway/` that forwards those requests to the Supabase project. The
+Lovable-hosted website still calls Supabase directly, so on those networks use the app or
+https://fundbuddy-pro.pages.dev instead.
