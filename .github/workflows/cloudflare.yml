@@ -20,7 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      # Supabase settings come from the committed .env file.
+      # Other Supabase settings come from the committed .env file.
+      # Supabase traffic goes through our Cloudflare gateway (supabase-gateway/) because
+      # several Indian internet providers block *.supabase.co ("Failed to fetch").
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://fundbuddy-pro-api.pages.dev' }}
       NITRO_PRESET: cloudflare-pages
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -52,3 +55,8 @@ jobs:
       - name: Upload to Cloudflare Pages
         if: steps.secrets.outputs.ready == 'true'
         run: bunx wrangler@4.151.3 pages deploy dist --project-name fundbuddy-pro --branch main --commit-hash "$GITHUB_SHA"
+
+      - name: Update the Supabase gateway
+        if: steps.secrets.outputs.ready == 'true'
+        working-directory: supabase-gateway
+        run: bunx wrangler@4.151.3 pages deploy public --project-name fundbuddy-pro-api --branch main --commit-hash "$GITHUB_SHA"
