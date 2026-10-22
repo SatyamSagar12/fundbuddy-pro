@@ -8,15 +8,18 @@ jobs:
     steps:
       - name: Find the database each live website uses
         run: |
-          for site in https://fundbuddy-pro.lovable.app https://fundbuddy-pro.pages.dev; do
+          for site in https://school-meal-hub-five.vercel.app https://fundbuddy-pro.vercel.app https://fundbuddy-pro-five.vercel.app https://fund-buddy-pro.vercel.app; do
             echo "=== $site"
-            curl -sS --compressed -m 20 -o page.html "$site/auth" || true
+            curl -sS --compressed -m 20 -o page.html "$site/" || true
             grep -ao '<title>[^<]*' page.html | head -1
             for js in $(grep -aoE '/assets/[A-Za-z0-9_.~-]+\.js' page.html | sort -u); do
-              curl -sS --compressed -m 20 "$site$js" | grep -aoE '[a-z0-9]{20}\.supabase\.co|sb_publishable_[A-Za-z0-9_-]+|[a-z0-9-]+-api\.pages\.dev' | sort -u | sed "s#^#  $js: #"
+              curl -sS --compressed -m 20 "$site$js" | grep -aoE '[a-z0-9]{20}\.supabase\.co|sb_publishable_[A-Za-z0-9_-]+|[a-z0-9-]+-api\.pages\.dev' | sort -u | tee -a refs-raw.txt | sed "s#^#  $js: #"
             done
           done
-          echo "=== settings of each candidate project"
+          grep -aoE "[a-z0-9]{20}\.supabase\.co" refs-raw.txt 2>/dev/null | sort -u > refs.txt || true
+          echo "=== candidate databases"
+          for js in $(grep -aoE '/assets/[A-Za-z0-9_.~-]+\.js' page.html | head -0); do :; done
           for ref in tojgfdjfmmnywjjrzdkn; do
             curl -sS -m 20 "https://$ref.supabase.co/auth/v1/settings" -H "apikey: sb_publishable_iNueS_IOeMlZy5a2QRsm7Q_Iqb3nj8h" | head -c 200; echo
           done
+          for ref in $(cat refs.txt 2>/dev/null); do echo "$ref: DNS $(dig +short $ref | head -1)"; done
