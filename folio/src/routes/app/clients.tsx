@@ -1,19 +1,27 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { z } from "zod";
 import { listClients } from "@/functions/practice";
+import { assignClient, getTeam } from "@/functions/team";
 import { Card } from "@/components/ui";
 
 export const Route = createFileRoute("/app/clients")({
   validateSearch: z.object({ q: z.string().optional() }),
   loaderDeps: ({ search }) => ({ q: search.q }),
-  loader: ({ deps }) => listClients({ data: { q: deps.q } }),
+  loader: async ({ deps }) => {
+    const [clients, team] = await Promise.all([listClients({ data: { q: deps.q } }), getTeam()]);
+    return { clients, team };
+  },
   head: () => ({ meta: [{ title: "Clients · Anqulas Folio" }] }),
   component: ClientsPage,
 });
 
 function ClientsPage() {
-  const clients = Route.useLoaderData();
+  const { clients, team } = Route.useLoaderData();
+  const { me } = Route.useRouteContext();
+  const router = useRouter();
+  const canAssign = (me.role === "owner" || me.role === "staff") && team.members.length > 1;
+  const people = team.members.filter((m) => m.active);
   const { q } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
 
@@ -54,9 +62,29 @@ function ClientsPage() {
                     {[c.mobile, c.email, c.pan].filter(Boolean).join(" · ") || "No contact details"}
                   </p>
                 </div>
-                <span className="shrink-0 text-sm text-muted">
-                  {c.activeSips > 0 ? `${c.activeSips} active SIP${c.activeSips > 1 ? "s" : ""}` : ""}
-                </span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="hidden text-sm text-muted sm:inline">
+                    {c.activeSips > 0 ? `${c.activeSips} active SIP${c.activeSips > 1 ? "s" : ""}` : ""}
+                  </span>
+                  {canAssign && (
+                    <select
+                      aria-label={`Who handles ${c.name}`}
+                      value={c.assignedUserId ?? ""}
+                      onChange={async (e) => {
+                        await assignClient({ data: { investorId: c.id, userId: e.target.value || null } });
+                        await router.invalidate();
+                      }}
+                      className="min-h-10 max-w-40 rounded-lg border border-line bg-white px-2 text-sm"
+                    >
+                      <option value="">Not assigned</option>
+                      {people.map((p) => (
+                        <option key={p.userId} value={p.userId}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

@@ -374,7 +374,7 @@ Father's data migration:
 | Phase | Delivers | Rough size |
 |---|---|---|
 | 0 | Lock down current app (section 0) | 15 min, today |
-| 1 | Environment (Cloudflare Workers + Postgres in Mumbai + Hyperdrive + CI), sign-up, 2FA, practices + RLS, encryption, father's data import (**done**, see `folio/README.md`). Still to do: password reset, lost-phone recovery, staff invites, billing, platform console | 2 weeks |
+| 1 | Environment (Cloudflare Workers + Postgres in Mumbai + Hyperdrive + CI), sign-up, authenticator + recovery codes, password reset, practices + RLS, encryption, team and sub-brokers, UPI billing, platform console, father's data import. **Done**: see `folio/README.md` | 2 weeks |
 | 2 | Scheme master + daily NAV, valuation, XIRR; CAMS/KFintech file parsers (upload); CAS PDF import | 2 weeks |
 | 3 | Forwarding address + automatic ingest; SIP book; morning briefing (app + WhatsApp/email) | 1–2 weeks |
 | 4 | Branded PDF reports, monthly auto-statements, client portal (OTP), capital gains | 2 weeks |

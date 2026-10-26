@@ -5,11 +5,11 @@ import { z } from "zod";
 import { db } from "@/server/db/client";
 import { withPractice } from "@/server/db/scope";
 import { auditLog, families, investors, practices, sips, transactions } from "@/server/db/schema";
-import { cryptoFor, requireMember } from "@/server/member";
+import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const m = await requireMember();
-  return withPractice(m.practiceId, async (tx) => {
+  return withPractice(scopeOf(m), async (tx) => {
     const [clients] = await tx.select({ n: sql<number>`count(*)::int` }).from(investors);
     const [sipStats] = await tx
       .select({
@@ -50,7 +50,7 @@ export const listClients = createServerFn({ method: "GET" })
     const q = data.q ?? "";
     // A full PAN is matched through its keyed hash; names, mobiles and emails by text.
     const panHash = /^[A-Za-z]{5}\d{4}[A-Za-z]$/.test(q) ? await (await cryptoFor(m.practiceId)).taxIdHash(q) : null;
-    return withPractice(m.practiceId, async (tx) => {
+    return withPractice(scopeOf(m), async (tx) => {
       const like = `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
       const where = q
         ? or(
@@ -67,6 +67,7 @@ export const listClients = createServerFn({ method: "GET" })
           mobile: investors.mobile,
           email: investors.email,
           taxIdLast4: investors.taxIdLast4,
+          assignedUserId: investors.assignedUserId,
           family: families.name,
         })
         .from(investors)

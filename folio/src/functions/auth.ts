@@ -7,18 +7,19 @@
  *  - Attempts are rate-limited per network and per account; 10 wrong passwords lock the account 15 minutes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader } from "@tanstack/react-start/server";
-import { and, eq, gt, isNull, lt, or } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { z } from "zod";
 import QRCode from "qrcode";
 import { db } from "@/server/db/client";
-import { withPractice } from "@/server/db/scope";
-import { auditLog, emailTokens, memberships, practices, users } from "@/server/db/schema";
+import { emailTokens, memberships, practices, recoveryCodes, users } from "@/server/db/schema";
 import { appEnv } from "@/server/env";
-import { hmacHex, newWrappedDataKey, openWithMaster, randomToken, sealWithMaster } from "@/server/crypto";
+import { hmacHex, newWrappedDataKey, randomToken, sealWithMaster } from "@/server/crypto";
 import { dummyPasswordHash, hashPassword, passwordProblem, verifyPassword } from "@/server/password";
-import { newTotpSecret, otpauthUrl, verifyTotp } from "@/server/totp";
-import { createSession, endSession, getSession, markMfaPassed } from "@/server/session";
+import { newTotpSecret, otpauthUrl } from "@/server/totp";
+import { checkCode } from "@/server/two-factor";
+import { billingFor } from "@/server/billing";
+import { createSession, endAllSessions, endSession, getSession, markMfaPassed } from "@/server/session";
+import { audit, clientIp, newRecoveryCodes, securityEmail, consumeRecoveryCode } from "@/server/security";
 import { underLimit } from "@/server/rate-limit";
 import { sendMail } from "@/server/mailer";
 
@@ -28,10 +29,6 @@ const LOCK_AFTER = 10;
 const LOCK_MINUTES = 15;
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
-
-function clientIp(): string {
-  return getRequestHeader("cf-connecting-ip") ?? "local";
-}
 
 const email = z
   .string()
@@ -123,9 +120,7 @@ export const signup = createServerFn({ method: "POST" })
       await tx.insert(memberships).values({ practiceId, userId: user!.id, role: "owner" });
       return user!.id;
     });
-    await withPractice(practiceId, (tx) =>
-      tx.insert(auditLog).values({ practiceId, userId, action: "practice.created", ip: clientIp() }),
-    );
+    await audit(practiceId, userId, "practice.created");
     await sendVerification(userId, data.email, data.name);
     return { ok: true };
   });
@@ -213,7 +208,9 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
 export const getMe = createServerFn({ method: "GET" }).handler(async () => {
   const s = await getSession();
   if (!s) return null;
+  const billing = s.practiceId && s.mfaPassed ? await billingFor(s.practiceId) : null;
   return {
+    billing: billing && { state: billing.state, endsAt: billing.endsAt, locksAt: billing.locksAt },
     name: s.name,
     email: s.email,
     totpEnabled: s.totpEnabled,
@@ -244,32 +241,9 @@ export const startTotpSetup = createServerFn({ method: "POST" }).handler(
 
 const codeInput = z.object({ code: z.string().trim().max(10) });
 
-async function checkCode(userId: string, code: string): Promise<boolean> {
-  if (!(await underLimit(`totp:${userId}`, 6, 300))) return false;
-  const [user] = await db().select().from(users).where(eq(users.id, userId));
-  if (!user?.totpSecretEnc) return false;
-  const secret = await openWithMaster(appEnv().MASTER_KEY, user.totpSecretEnc, `totp:${userId}`);
-  const step = await verifyTotp(secret, code, user.totpLastStep ?? null);
-  if (step === null) return false;
-  // Only one request can claim a step: the update matches nothing if another request already stored this
-  // step or a later one, so two simultaneous requests with the same code cannot both succeed.
-  const claimed = await db()
-    .update(users)
-    .set({ totpLastStep: step })
-    .where(
-      and(
-        eq(users.id, userId),
-        eq(users.totpSecretEnc, user.totpSecretEnc),
-        or(isNull(users.totpLastStep), lt(users.totpLastStep, step)),
-      ),
-    )
-    .returning({ id: users.id });
-  return claimed.length === 1;
-}
-
 export const confirmTotpSetup = createServerFn({ method: "POST" })
   .validator((input: unknown) => codeInput.parse(input))
-  .handler(async ({ data }): Promise<Result> => {
+  .handler(async ({ data }): Promise<Result<{ recoveryCodes: string[] }>> => {
     const s = await getSession();
     if (!s) return { ok: false, error: "Sign in again." };
     if (s.totpEnabled) return { ok: false, error: "Your authenticator is already set up." };
@@ -278,13 +252,9 @@ export const confirmTotpSetup = createServerFn({ method: "POST" })
     }
     await db().update(users).set({ totpEnabledAt: new Date() }).where(eq(users.id, s.userId));
     await markMfaPassed(s.sessionId);
-    if (s.practiceId) {
-      const practiceId = s.practiceId;
-      await withPractice(practiceId, (tx) =>
-        tx.insert(auditLog).values({ practiceId, userId: s.userId, action: "user.totp_enabled", ip: clientIp() }),
-      );
-    }
-    return { ok: true };
+    const codes = await newRecoveryCodes(s.userId);
+    await audit(s.practiceId, s.userId, "user.totp_enabled");
+    return { ok: true, recoveryCodes: codes };
   });
 
 export const verifyTotpCode = createServerFn({ method: "POST" })
@@ -297,11 +267,97 @@ export const verifyTotpCode = createServerFn({ method: "POST" })
       return { ok: false, error: "That code didn't match. Try the newest code in your app." };
     }
     await markMfaPassed(s.sessionId);
-    if (s.practiceId) {
-      const practiceId = s.practiceId;
-      await withPractice(practiceId, (tx) =>
-        tx.insert(auditLog).values({ practiceId, userId: s.userId, action: "user.signed_in", ip: clientIp() }),
-      );
+    await audit(s.practiceId, s.userId, "user.signed_in");
+    return { ok: true };
+  });
+
+/**
+ * Lost phone: a recovery code (after the password) removes the old authenticator. The person must set up a
+ * new one straight away, which also issues new recovery codes. The account owner is emailed.
+ */
+export const redeemRecoveryCode = createServerFn({ method: "POST" })
+  .validator((input: unknown) => z.object({ code: z.string().trim().max(20) }).parse(input))
+  .handler(async ({ data }): Promise<Result> => {
+    const s = await getSession();
+    if (!s) return { ok: false, error: "Sign in again." };
+    if (!s.totpEnabled) return { ok: false, error: "Set up your authenticator first." };
+    if (!(await underLimit(`recovery:${s.userId}`, 5, 3600)) || !(await consumeRecoveryCode(s.userId, data.code))) {
+      return { ok: false, error: "That recovery code didn't work. Each code works once." };
     }
+    await db()
+      .update(users)
+      .set({ totpEnabledAt: null, totpSecretEnc: null, totpLastStep: null })
+      .where(eq(users.id, s.userId));
+    await db().delete(recoveryCodes).where(eq(recoveryCodes.userId, s.userId));
+    await audit(s.practiceId, s.userId, "user.totp_reset_with_recovery_code");
+    await securityEmail(s.email, s.name, "A recovery code was used and your authenticator app was removed");
+    return { ok: true };
+  });
+
+// ── Password reset ──────────────────────────────────────────────────────────
+
+const RESET_MINUTES = 60;
+
+/** Always answers the same, whether or not the email has an account. */
+export const forgotPassword = createServerFn({ method: "POST" })
+  .validator((input: unknown) => z.object({ email }).parse(input))
+  .handler(async ({ data }): Promise<Result> => {
+    const allowed =
+      (await underLimit(`forgot:ip:${clientIp()}`, 10, 3600)) && (await underLimit(`forgot:${data.email}`, 3, 3600));
+    if (!allowed) return { ok: true };
+    const [user] = await db().select().from(users).where(eq(users.email, data.email));
+    if (!user?.emailVerifiedAt) return { ok: true };
+    const token = randomToken();
+    await db()
+      .insert(emailTokens)
+      .values({
+        id: await tokenHash(token),
+        userId: user.id,
+        purpose: "reset",
+        expiresAt: new Date(Date.now() + RESET_MINUTES * 60 * 1000),
+      });
+    await sendMail({
+      to: user.email,
+      subject: "Reset your Anqulas Folio password",
+      text: `Hello ${user.name},\n\nTo choose a new password, open:\n${appEnv().APP_URL}/reset-password?token=${encodeURIComponent(token)}\n\nThe link works for ${RESET_MINUTES} minutes, once. If you didn't ask for this, ignore this email; your password stays the same.\n\nAnqulas Folio`,
+    });
+    return { ok: true };
+  });
+
+export const resetPassword = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z.object({ token: z.string().min(20).max(100), password: z.string().max(200) }).parse(input),
+  )
+  .handler(async ({ data }): Promise<Result> => {
+    const id = await tokenHash(data.token);
+    const [row] = await db()
+      .select({ userId: emailTokens.userId, email: users.email, name: users.name })
+      .from(emailTokens)
+      .innerJoin(users, eq(users.id, emailTokens.userId))
+      .where(
+        and(
+          eq(emailTokens.id, id),
+          eq(emailTokens.purpose, "reset"),
+          isNull(emailTokens.usedAt),
+          gt(emailTokens.expiresAt, new Date()),
+        ),
+      );
+    if (!row) return { ok: false, error: "This link has expired or was already used. Ask for a new one." };
+    const problem = passwordProblem(data.password, row.email);
+    if (problem) return { ok: false, error: problem };
+    const claimed = await db()
+      .update(emailTokens)
+      .set({ usedAt: new Date() })
+      .where(and(eq(emailTokens.id, id), isNull(emailTokens.usedAt)))
+      .returning({ id: emailTokens.id });
+    if (claimed.length !== 1) return { ok: false, error: "This link was already used. Ask for a new one." };
+    await db()
+      .update(users)
+      .set({ passwordHash: await hashPassword(data.password), failedLogins: 0, lockedUntil: null })
+      .where(eq(users.id, row.userId));
+    // Every device is signed out. The authenticator is still needed at the next sign-in.
+    await endAllSessions(row.userId);
+    await audit(null, row.userId, "user.password_reset");
+    await securityEmail(row.email, row.name, "Your password was changed");
     return { ok: true };
   });

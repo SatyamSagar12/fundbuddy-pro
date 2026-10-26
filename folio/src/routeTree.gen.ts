@@ -11,15 +11,25 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/app/route'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as InviteRouteImport } from './routes/invite'
+import { Route as LockedRouteImport } from './routes/locked'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as NoAccessRouteImport } from './routes/no-access'
+import { Route as PlatformRouteImport } from './routes/platform'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppClientsRouteImport } from './routes/app/clients'
-import { Route as AppSettingsRouteImport } from './routes/app/settings'
+import { Route as AppSettingsRouteRouteImport } from './routes/app/settings/route'
 import { Route as DevOutboxRouteImport } from './routes/dev/outbox'
 import { Route as TwoFactorIndexRouteImport } from './routes/two-factor/index'
 import { Route as TwoFactorSetupRouteImport } from './routes/two-factor/setup'
+import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
+import { Route as AppSettingsBillingRouteImport } from './routes/app/settings/billing'
+import { Route as AppSettingsSecurityRouteImport } from './routes/app/settings/security'
+import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,9 +41,39 @@ const AppRouteRoute = AppRouteRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteRoute = InviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LockedRoute = LockedRouteImport.update({
+  id: '/locked',
+  path: '/locked',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NoAccessRoute = NoAccessRouteImport.update({
+  id: '/no-access',
+  path: '/no-access',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlatformRoute = PlatformRouteImport.update({
+  id: '/platform',
+  path: '/platform',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -56,7 +96,7 @@ const AppClientsRoute = AppClientsRouteImport.update({
   path: '/clients',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
+const AppSettingsRouteRoute = AppSettingsRouteRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AppRouteRoute,
@@ -76,91 +116,175 @@ const TwoFactorSetupRoute = TwoFactorSetupRouteImport.update({
   path: '/two-factor/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
+const AppSettingsBillingRoute = AppSettingsBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
+const AppSettingsSecurityRoute = AppSettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
+const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/invite': typeof InviteRoute
+  '/locked': typeof LockedRoute
   '/login': typeof LoginRoute
+  '/no-access': typeof NoAccessRoute
+  '/platform': typeof PlatformRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/settings': typeof AppSettingsRouteRouteWithChildren
   '/app/clients': typeof AppClientsRoute
-  '/app/settings': typeof AppSettingsRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
   '/app/': typeof AppIndexRoute
   '/two-factor/': typeof TwoFactorIndexRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/invite': typeof InviteRoute
+  '/locked': typeof LockedRoute
   '/login': typeof LoginRoute
+  '/no-access': typeof NoAccessRoute
+  '/platform': typeof PlatformRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/clients': typeof AppClientsRoute
-  '/app/settings': typeof AppSettingsRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
   '/app': typeof AppIndexRoute
   '/two-factor': typeof TwoFactorIndexRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings': typeof AppSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
+  '/invite': typeof InviteRoute
+  '/locked': typeof LockedRoute
   '/login': typeof LoginRoute
+  '/no-access': typeof NoAccessRoute
+  '/platform': typeof PlatformRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/settings': typeof AppSettingsRouteRouteWithChildren
   '/app/clients': typeof AppClientsRoute
-  '/app/settings': typeof AppSettingsRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
   '/app/': typeof AppIndexRoute
   '/two-factor/': typeof TwoFactorIndexRoute
+  '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/security': typeof AppSettingsSecurityRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/app'
+    | '/forgot-password'
+    | '/invite'
+    | '/locked'
     | '/login'
+    | '/no-access'
+    | '/platform'
+    | '/reset-password'
     | '/signup'
     | '/verify-email'
-    | '/app/clients'
     | '/app/settings'
+    | '/app/clients'
     | '/dev/outbox'
     | '/two-factor/setup'
     | '/app/'
     | '/two-factor/'
+    | '/app/settings/billing'
+    | '/app/settings/security'
+    | '/app/settings/team'
+    | '/app/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/forgot-password'
+    | '/invite'
+    | '/locked'
     | '/login'
+    | '/no-access'
+    | '/platform'
+    | '/reset-password'
     | '/signup'
     | '/verify-email'
     | '/app/clients'
-    | '/app/settings'
     | '/dev/outbox'
     | '/two-factor/setup'
     | '/app'
     | '/two-factor'
+    | '/app/settings/billing'
+    | '/app/settings/security'
+    | '/app/settings/team'
+    | '/app/settings'
   id:
     | '__root__'
     | '/'
     | '/app'
+    | '/forgot-password'
+    | '/invite'
+    | '/locked'
     | '/login'
+    | '/no-access'
+    | '/platform'
+    | '/reset-password'
     | '/signup'
     | '/verify-email'
-    | '/app/clients'
     | '/app/settings'
+    | '/app/clients'
     | '/dev/outbox'
     | '/two-factor/setup'
     | '/app/'
     | '/two-factor/'
+    | '/app/settings/billing'
+    | '/app/settings/security'
+    | '/app/settings/team'
+    | '/app/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
+  InviteRoute: typeof InviteRoute
+  LockedRoute: typeof LockedRoute
   LoginRoute: typeof LoginRoute
+  NoAccessRoute: typeof NoAccessRoute
+  PlatformRoute: typeof PlatformRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   DevOutboxRoute: typeof DevOutboxRoute
@@ -184,11 +308,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite': {
+      id: '/invite'
+      path: '/invite'
+      fullPath: '/invite'
+      preLoaderRoute: typeof InviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locked': {
+      id: '/locked'
+      path: '/locked'
+      fullPath: '/locked'
+      preLoaderRoute: typeof LockedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/no-access': {
+      id: '/no-access'
+      path: '/no-access'
+      fullPath: '/no-access'
+      preLoaderRoute: typeof NoAccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/platform': {
+      id: '/platform'
+      path: '/platform'
+      fullPath: '/platform'
+      preLoaderRoute: typeof PlatformRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -223,7 +389,7 @@ declare module '@tanstack/react-router' {
       id: '/app/settings'
       path: '/settings'
       fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
+      preLoaderRoute: typeof AppSettingsRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/dev/outbox': {
@@ -247,18 +413,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TwoFactorSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/settings/': {
+      id: '/app/settings/'
+      path: '/'
+      fullPath: '/app/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/app/settings/billing': {
+      id: '/app/settings/billing'
+      path: '/billing'
+      fullPath: '/app/settings/billing'
+      preLoaderRoute: typeof AppSettingsBillingRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/app/settings/security': {
+      id: '/app/settings/security'
+      path: '/security'
+      fullPath: '/app/settings/security'
+      preLoaderRoute: typeof AppSettingsSecurityRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/app/settings/team': {
+      id: '/app/settings/team'
+      path: '/team'
+      fullPath: '/app/settings/team'
+      preLoaderRoute: typeof AppSettingsTeamRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
   }
 }
 
+interface AppSettingsRouteRouteChildren {
+  AppSettingsBillingRoute: typeof AppSettingsBillingRoute
+  AppSettingsSecurityRoute: typeof AppSettingsSecurityRoute
+  AppSettingsTeamRoute: typeof AppSettingsTeamRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+}
+
+const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
+  AppSettingsBillingRoute: AppSettingsBillingRoute,
+  AppSettingsSecurityRoute: AppSettingsSecurityRoute,
+  AppSettingsTeamRoute: AppSettingsTeamRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
+}
+
+const AppSettingsRouteRouteWithChildren =
+  AppSettingsRouteRoute._addFileChildren(AppSettingsRouteRouteChildren)
+
 interface AppRouteRouteChildren {
+  AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
   AppClientsRoute: typeof AppClientsRoute
-  AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppClientsRoute: AppClientsRoute,
-  AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
@@ -269,7 +480,13 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
+  InviteRoute: InviteRoute,
+  LockedRoute: LockedRoute,
   LoginRoute: LoginRoute,
+  NoAccessRoute: NoAccessRoute,
+  PlatformRoute: PlatformRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   DevOutboxRoute: DevOutboxRoute,

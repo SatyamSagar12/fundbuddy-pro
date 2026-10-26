@@ -8,3 +8,6 @@ SES_ACCESS_KEY_ID=
 SES_SECRET_ACCESS_KEY=
 # Comma-separated emails allowed into /platform.
 PLATFORM_ADMIN_EMAILS=
+# Your UPI ID for plan payments, and the name payers see.
+UPI_ID=
+UPI_PAYEE_NAME=Anqulas

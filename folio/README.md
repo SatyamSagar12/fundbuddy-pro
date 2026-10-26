@@ -6,39 +6,70 @@ mailback import and daily NAVs. Product plan: [`../docs/SAAS-PLAN.md`](../docs/S
 This folder is a separate app from the old FundVault Lite app at the repo root. The root app keeps serving your
 father until the switch-over. Changes here never rebuild or redeploy it: the old workflows ignore `folio/**`.
 
-## What exists (phase 1, part 1)
+## What exists (phase 1, complete)
 
-- **Sign-up** creates a practice on a 30-day trial. **Email confirmation** happens by a button, not by opening
-  the link, so mail scanners can't use it up.
-- **Sign-in** requires an **authenticator app** (Google or Microsoft Authenticator) for every account. Nobody sees
-  data before setting one up.
-- **Lockouts and limits:**
+**Signing up and signing in**
+
+- **Sign-up** creates a practice on a 30-day trial with Growth limits. **Email confirmation** happens by a button,
+  not by opening the link, so mail scanners can't use it up.
+- **Authenticator required.** Every account must set up an authenticator app (Google or Microsoft Authenticator)
+  before seeing any data. Setup also shows **10 one-time recovery codes**.
+- **Lost phone.** On the code screen, "Lost your phone?" accepts a recovery code. It removes the old authenticator
+  and makes the person set up a new one straight away. You can also reset someone's authenticator from `/platform`
+  after checking who they are.
+- **Forgot password.** The emailed link works once, for 60 minutes. Resetting signs out every device, and the
+  authenticator is still needed afterwards.
+- **Security emails** go out for password changes, authenticator resets and new recovery codes.
+- **Protections:**
   - 10 wrong passwords lock the account for 15 minutes.
-  - Rate limits on sign-up, sign-in and codes.
+  - Rate limits on every sign-in step.
   - A code is never accepted twice.
   - Answers never reveal whether an email has an account.
-- **Sessions:**
-  - The cookie holds a random token; only its HMAC is stored.
-  - Sessions end after 7 days unused or 30 days in total.
-  - A new token is issued after the authenticator step.
-- **Practice separation is enforced by Postgres row-level security.** The app's queries run as a restricted role
-  scoped to one practice. `test/rls.test.ts` proves the database refuses to read, write, update or delete another
-  practice's rows, sees nothing when no practice is set, and keeps the audit log append-only.
+  - Sessions store only an HMAC of the cookie token.
+
+**Separation and encryption**
+
+- **Between practices, enforced by Postgres row-level security** (migrations 0001 and 0003). `test/rls.test.ts`
+  and `test/subbroker.test.ts` prove the database refuses other practices' rows, sees nothing when no practice is
+  set, keeps the audit log append-only, and limits a sub-broker to the clients assigned to them.
 - **Encryption:** PAN, bank and nominee details are encrypted with each practice's own key, wrapped by
-  `MASTER_KEY`. Clients can still be found by full PAN through a keyed hash. The list shows `XXXXXX234F`.
-- **Pages:** Home (counts, SIP inflow, recent transactions), Clients (search by name, mobile, email or full PAN),
-  Settings (practice name, ARN, EUIN, owner only).
-- **Old data import:** `scripts/import-fundvault.ts` brings in your father's clients, investments and SIPs from the
-  old app's CSV exports. It encrypts sensitive fields, skips the 4 sample clients, is safe to re-run, has a dry
-  run, and checks totals.
+  `MASTER_KEY`. Clients can still be found by full PAN. Lists show `XXXXXX234F`.
 
-Still to do in phase 1:
+**Team** (Settings → Team, owner only)
 
-- Password reset
-- A recovery path for a lost phone
-- Inviting staff
-- Plans and UPI/PhonePe billing
-- The platform admin page
+- Invite **staff** (see every client) or **sub-brokers** (see only clients assigned to them).
+- Change a member's role, switch someone off (signed out at once), withdraw an invitation.
+- On Clients, "Handled by" assigns a client to a team member.
+- Plan user limits apply.
+
+**Billing** (Settings → Billing, owner only)
+
+- **Plans:** Starter, Growth and Pro, monthly or yearly. Prices and limits live only in `src/lib/plans.ts`.
+- **Paying:**
+  - The owner pays by UPI to your `UPI_ID` (QR code, or a link on a phone) and enters the 12-digit UTR.
+  - You confirm it in `/platform`; only then is the period extended.
+  - Remaining trial days are kept, and unused days convert when the plan changes.
+  - A UTR can be claimed once.
+- **When a plan ends:** a banner shows for 7 days before the end. After the end there are 3 days of grace, then the
+  app locks to the billing page. Nothing is deleted.
+
+**Platform console** (`/platform`)
+
+- Only for `PLATFORM_ADMIN_EMAILS`, within 12 hours of passing the authenticator. Everyone else gets "not found".
+- Totals and monthly revenue.
+- UPI payments to confirm or reject (the owner is emailed either way).
+- Per practice: extend the trial, record a payment made outside the app, suspend or restore.
+- Reset someone's authenticator.
+
+**Pages:** Home, Clients (search, "Handled by"), Settings (Practice, Team, Security, Billing).
+
+**Import:** `scripts/import-fundvault.ts` brings in your father's data from the old app (below).
+
+Not in phase 1:
+
+- Choosing between practices for someone in two practices: they open the one they joined first.
+- PhonePe or PayPal checkout (manual UPI only for now).
+- GST invoices (decide GST with your CA first).
 
 ## Stack
 
@@ -70,7 +101,9 @@ Checks:
 ```sh
 npm run typecheck
 npm test                              # encryption, codes, passwords, row-level security, import
-npx tsx scripts/e2e-auth.ts           # browser: the whole sign-up and sign-in journey (dev server running)
+npx tsx scripts/e2e-auth.ts           # browser: sign-up and sign-in details (dev server running)
+npx tsx scripts/e2e.ts                # browser: all of phase 1 (needs PLATFORM_ADMIN_EMAILS=e2e.platform@example.com
+                                      # and a UPI_ID in .dev.vars; deletes earlier e2e.* test accounts)
 ```
 
 Changing the database: edit `src/server/db/schema.ts`, then `npm run db:generate`. Every new practice table needs
@@ -97,7 +130,10 @@ You do these steps, because they need your accounts and secrets. Never paste a s
    ```sh
    npx wrangler secret put MASTER_KEY
    npx wrangler secret put SESSION_SECRET
+   npx wrangler secret put PLATFORM_ADMIN_EMAILS   # your email: opens /platform
+   npx wrangler secret put UPI_ID                  # where plan payments go, e.g. yourname@okhdfcbank
    ```
+   Optionally set `UPI_PAYEE_NAME` the same way. It's the name payers see (default "Anqulas").
 6. **Email (Amazon SES, Mumbai):**
    - Verify the domain `mail.folio.anqulas.com` with DKIM, then request production access.
    - Create an IAM user allowed only `ses:SendEmail`.

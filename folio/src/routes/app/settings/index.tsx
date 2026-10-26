@@ -2,12 +2,10 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { getPractice, updatePractice } from "@/functions/practice";
 import { Button, Card, Field, Notice } from "@/components/ui";
-import { day } from "@/lib/format";
 import { firstIssue, SOMETHING_WRONG } from "@/lib/errors";
 
-export const Route = createFileRoute("/app/settings")({
+export const Route = createFileRoute("/app/settings/")({
   loader: () => getPractice(),
-  head: () => ({ meta: [{ title: "Settings · Anqulas Folio" }] }),
   component: SettingsPage,
 });
 
@@ -36,17 +34,7 @@ function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-5">
-      <header>
-        <h1 className="text-[26px] font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted">
-          {p.billingExempt
-            ? "Founder account"
-            : p.plan === "trial" && p.trialEndsAt
-              ? `Free trial until ${day(p.trialEndsAt)}`
-              : `Plan: ${p.plan}`}
-        </p>
-      </header>
+    <div className="space-y-5">
       <Card>
         <h2 className="mb-4 text-lg font-semibold">Practice details</h2>
         <p className="-mt-2 mb-4 text-[15px] text-muted">Shown on your clients' reports and statements.</p>

@@ -10,6 +10,9 @@ export type AppEnv = {
   SES_ACCESS_KEY_ID?: string;
   SES_SECRET_ACCESS_KEY?: string;
   PLATFORM_ADMIN_EMAILS?: string;
+  /** Your UPI ID for plan payments (e.g. anqulas@okhdfcbank) and the name shown in the payer's UPI app. */
+  UPI_ID?: string;
+  UPI_PAYEE_NAME?: string;
 };
 
 export function appEnv(): AppEnv {

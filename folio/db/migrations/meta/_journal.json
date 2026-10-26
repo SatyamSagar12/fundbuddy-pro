@@ -15,6 +15,20 @@
       "when": 1793053500623,
       "tag": "0001_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793055196031,
+      "tag": "0002_team_billing_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793055196682,
+      "tag": "0003_subbroker_scope",
+      "breakpoints": true
     }
   ]
 }

@@ -137,6 +137,71 @@ export const rateLimits = pgTable(
   (t) => [primaryKey({ columns: [t.key, t.windowStart] })],
 );
 
+/** One-time codes to get back in after losing the phone with the authenticator. Only HMACs are stored. */
+export const recoveryCodes = pgTable(
+  "recovery_codes",
+  {
+    id: id(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    codeHash: text("code_hash").notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("recovery_codes_hash_key").on(t.codeHash), index("recovery_codes_user_idx").on(t.userId)],
+);
+
+/** Invitations to join a practice. `id` is the HMAC of the emailed token. */
+export const invites = pgTable(
+  "invites",
+  {
+    id: text("id").primaryKey(),
+    practiceId: uuid("practice_id")
+      .notNull()
+      .references(() => practices.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    /** staff | subbroker */
+    role: text("role").notNull(),
+    invitedBy: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("invites_practice_idx").on(t.practiceId)],
+);
+
+/** Payments for plans. Amounts are in paise (or cents), decided on the server from the plan table. */
+export const payments = pgTable(
+  "payments",
+  {
+    id: id(),
+    practiceId: uuid("practice_id")
+      .notNull()
+      .references(() => practices.id, { onDelete: "cascade" }),
+    plan: text("plan").notNull(),
+    months: integer("months").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    /** upi_manual | recorded (entered by the platform admin) */
+    method: text("method").notNull(),
+    /** UPI transaction reference (UTR), unique per method so one payment is claimed once. */
+    reference: text("reference"),
+    /** pending | confirmed | rejected */
+    status: text("status").notNull().default("pending"),
+    createdBy: uuid("created_by"),
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("payments_method_reference_key").on(t.method, t.reference),
+    index("payments_practice_idx").on(t.practiceId, t.createdAt),
+  ],
+);
+
 // ── Shared market data ────────────────────────────────────────────────────────
 
 export const instruments = pgTable(

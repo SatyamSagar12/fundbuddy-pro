@@ -95,6 +95,8 @@ try {
   check(true, "wrong authenticator code refused");
   await page.getByLabel("6-digit code").fill(await codeFor(secret));
   await page.getByRole("button", { name: "Turn on and continue" }).click();
+  await page.getByTestId("recovery-codes").waitFor();
+  await page.getByRole("button", { name: /I've saved them/ }).click();
   await waitForUrl(page, "/app");
   await page.getByText("Good to see you, Test").waitFor();
   check(true, "authenticator set up; Home opens");
@@ -104,6 +106,7 @@ try {
   check(true, "Clients page shows an empty practice");
 
   await page.getByRole("link", { name: "Settings" }).first().click();
+  await page.getByLabel("ARN").waitFor();
   check((await page.getByLabel("ARN").inputValue()) === "ARN-12345", "ARN saved at sign-up, normalised");
   await page.getByLabel("EUIN").fill("e123456");
   await page.getByRole("button", { name: "Save" }).click();

@@ -3,11 +3,14 @@ import { Home, LogOut, Settings, Users } from "lucide-react";
 import { getMe, logout } from "@/functions/auth";
 
 export const Route = createFileRoute("/app")({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     const me = await getMe();
     if (!me) throw redirect({ to: "/login" });
     if (!me.mfaPassed) throw redirect({ to: me.totpEnabled ? "/two-factor" : "/two-factor/setup" });
-    if (!me.hasPractice) throw redirect({ to: "/login" });
+    if (!me.hasPractice) throw redirect({ to: "/no-access" });
+    if (me.billing?.state === "locked" && location.pathname !== "/app/settings/billing") {
+      throw redirect({ to: me.role === "owner" ? "/app/settings/billing" : "/locked" });
+    }
     return { me };
   },
   component: AppLayout,
@@ -66,6 +69,7 @@ function AppLayout() {
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 sm:px-8 lg:pb-12">
+        <PlanBanner />
         <Outlet />
       </main>
 
@@ -83,6 +87,32 @@ function AppLayout() {
           </Link>
         ))}
       </nav>
+    </div>
+  );
+}
+
+const DAY = 86400000;
+
+/** Shown when the trial or plan ends within 7 days, or has ended (grace). */
+function PlanBanner() {
+  const { me } = Route.useRouteContext();
+  const b = me.billing;
+  if (!b || b.state === "exempt" || b.state === "locked" || !b.endsAt) return null;
+  const end = new Date(b.state === "grace" ? b.locksAt! : b.endsAt);
+  const daysLeft = Math.ceil((end.getTime() - Date.now()) / DAY);
+  if (b.state !== "grace" && daysLeft > 7) return null;
+  const text =
+    b.state === "grace"
+      ? `Your plan has ended. The app closes in ${daysLeft} day${daysLeft === 1 ? "" : "s"} unless it's renewed.`
+      : `Your ${b.state === "trial" ? "free trial" : "plan"} ends in ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`;
+  return (
+    <div role="status" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-bronze/40 bg-bronze-light/20 px-4 py-3 text-[15px]">
+      <span>{text}</span>
+      {me.role === "owner" && (
+        <Link to="/app/settings/billing" className="font-semibold text-bronze underline">
+          Choose a plan
+        </Link>
+      )}
     </div>
   );
 }

@@ -28,6 +28,8 @@ export type SessionInfo = {
   practiceId: string | null;
   practiceName: string | null;
   role: string | null;
+  /** When this session passed the authenticator step (sessions are re-created at that moment). */
+  createdAt: Date;
 };
 
 async function tokenId(token: string): Promise<string> {
@@ -64,6 +66,7 @@ export async function getSession(): Promise<SessionInfo | null> {
   const [row] = await db()
     .select({
       sessionId: sessions.id,
+      createdAt: sessions.createdAt,
       userId: users.id,
       email: users.email,
       name: users.name,
@@ -97,6 +100,7 @@ export async function getSession(): Promise<SessionInfo | null> {
   }
   return {
     sessionId: row.sessionId,
+    createdAt: row.createdAt,
     userId: row.userId,
     email: row.email,
     name: row.name,

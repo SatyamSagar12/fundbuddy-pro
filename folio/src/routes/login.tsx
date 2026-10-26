@@ -57,6 +57,11 @@ function LoginPage() {
         <Button type="submit" disabled={busy} className="w-full">
           {busy ? "Signing in…" : "Sign in"}
         </Button>
+        <p className="text-center text-[15px]">
+          <Link to="/forgot-password" className="font-semibold text-bronze underline">
+            Forgot password?
+          </Link>
+        </p>
         {error?.startsWith("Confirm your email") && (
           <Button type="button" variant="secondary" className="w-full" onClick={resend}>
             Send the confirmation link again

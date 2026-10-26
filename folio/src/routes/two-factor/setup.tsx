@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { confirmTotpSetup, getMe, startTotpSetup } from "@/functions/auth";
 import { AuthFrame, Button, Field, Notice } from "@/components/ui";
 import { SOMETHING_WRONG } from "@/lib/errors";
+import { RecoveryCodes } from "@/components/recovery-codes";
 
 export const Route = createFileRoute("/two-factor/setup")({
   beforeLoad: async () => {
@@ -19,6 +20,7 @@ function SetupPage() {
   const [qr, setQr] = useState<{ qrSvg: string; secret: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [codes, setCodes] = useState<string[] | null>(null);
 
   useEffect(() => {
     startTotpSetup().then((res) => (res.ok ? setQr(res) : setError(res.error)), () => setError(SOMETHING_WRONG));
@@ -31,8 +33,16 @@ function SetupPage() {
     setError(null);
     const res = await confirmTotpSetup({ data: { code } }).catch(() => ({ ok: false as const, error: SOMETHING_WRONG }));
     setBusy(false);
-    if (res.ok) await navigate({ to: "/app" });
+    if (res.ok) setCodes(res.recoveryCodes);
     else setError(res.error);
+  }
+
+  if (codes) {
+    return (
+      <AuthFrame title="Save your recovery codes" subtitle="Your authenticator is on.">
+        <RecoveryCodes codes={codes} doneLabel="I've saved them, continue" onDone={() => void navigate({ to: "/app" })} />
+      </AuthFrame>
+    );
   }
 
   return (
