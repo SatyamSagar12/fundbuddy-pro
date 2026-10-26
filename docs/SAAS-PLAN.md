@@ -240,11 +240,27 @@ always-on server suits it better than serverless functions, which have time limi
 | Stage | Setup | Approx. ₹/month |
 |---|---|---|
 | Building + father only | Local dev; current Lovable app keeps running (locked down) | 0 |
-| Beta → ~100 advisors | **One India VPS** (DigitalOcean Bangalore or Lightsail Mumbai, 2 vCPU / 4 GB) running Docker: app, worker, Postgres 17. **Cloudflare** in front (free; also fixes the ISPs that block `supabase.co`). **Cloudflare R2** for PDFs and raw mails (free up to 10 GB). Nightly **encrypted `pg_dump` to R2**, kept 30 days, with a monthly restore test. **Amazon SES Mumbai** for email (about ₹9 per 1,000). **Cloudflare Email Routing** for inbound mail (free). Sentry and Better Stack free tiers. | **~₹2,000–2,500** |
-| 100+ advisors | Move Postgres to a managed service (Supabase Pro Mumbai or DO Managed Postgres, ~₹2,100–2,600) for point-in-time recovery; keep the VPS for app + worker | ~₹5,000–6,000 |
+| Beta → ~100 advisors | **DigitalOcean Bangalore:** one small server (Droplet, 2 GB, ~$12) for app + worker, plus **Managed Postgres** (~$15, daily backups + 7-day point-in-time recovery included, same data centre). **Cloudflare** in front (free). **Cloudflare R2** for PDFs and raw mails (free up to 10 GB). Extra nightly **encrypted `pg_dump` to R2**, kept 30 days, with a monthly restore test. **Amazon SES Mumbai** for email (about ₹9 per 1,000). **Cloudflare Email Routing** for inbound mail (free). Sentry and Better Stack free tiers. | **~₹2,400** |
+| 100+ advisors | Bigger Droplet and database plan; add a standby database node for automatic failover | ~₹5,000–7,000 |
 
-Zero-ops alternative: Vercel Pro + Supabase Pro (Mumbai) is about ₹3,800/month. It needs no server patching, but the
-mail and NAV jobs would need a separate worker anyway.
+### Database: why not Supabase
+
+The new app talks to the database only from the server, and does its own sign-in (Docchase's). So it needs
+**plain Postgres** and none of Supabase's extras. Any provider below works with the same code; moving later only
+changes the connection string.
+
+| Option | India region | Approx. cost | Backups | Verdict |
+|---|---|---|---|---|
+| **DigitalOcean Managed Postgres** | Bangalore | ~$15 (~₹1,300) | Daily + 7-day point-in-time recovery included | **Recommended.** Cheapest managed option with recovery included, next to the app server |
+| PlanetScale Postgres (PS-5) | Mumbai | ~$5 (~₹450) single node; ~$30 with failover | Included | Good cheaper alternative; confirm the Mumbai price and backup terms before choosing |
+| Postgres on the same server (Docker) | Wherever the server is | ₹0 extra | Only what we script (`pg_dump`, or WAL-G to R2 for point-in-time) | Cheapest; you become the database admin. Fine while it is only father's data |
+| AWS RDS / Lightsail database | Mumbai | ~$15+ | Included | Fine, more AWS complexity |
+| Supabase Pro | Mumbai | $25 (~₹2,200); point-in-time recovery +$100/month | Daily (7 days) | Pays for auth, storage and APIs we would not use. Indian ISPs blocked `supabase.co` under Section 69A in Feb 2026 (later restored); a repeat would hit apps that use it from the browser |
+| Neon | No (Singapore nearest) | Usage-based | Included | Data leaves India and every query is slower. No |
+| Nile (Postgres with built-in "database per tenant") | Not confirmed | Unpublished | — | Interesting for the per-advisor wish, but too young and unclear for client financial data. Revisit later |
+
+Zero-ops alternative: Vercel Pro + DigitalOcean Managed Postgres. No server patching, but the mail and NAV jobs
+would still need a small worker.
 
 Notes:
 
@@ -341,6 +357,6 @@ and parsers must be built against real files. Names and PANs can be masked.
 
 1. Isolation: shared Postgres + RLS + per-practice encryption (recommended), or a separate database per advisor?
 2. Build on the Docchase codebase (recommended), or keep the Lovable/TanStack app?
-3. Hosting: India VPS (~₹2,000–2,500/month, some server upkeep), or Vercel Pro + Supabase Pro (~₹3,800/month, none)?
+3. Hosting: DigitalOcean Bangalore server + Managed Postgres (~₹2,400/month, recommended), PlanetScale Mumbai database (cheaper, verify terms), or Postgres on the server itself (cheapest, you look after it)?
 4. Product name and domain. Is "FundBuddy" final? It is needed for the forwarding addresses and branding.
 5. Does your father hold an ARN as an individual MFD, and does he use CAMS and KFintech mailback today?
