@@ -225,7 +225,7 @@ five-item menu **Home · Clients · SIPs · Reports · Settings**.
 
 ---
 
-## 5. Environment: Cloudflare + PlanetScale Postgres (Mumbai)
+## 5. Environment: Cloudflare Workers + Postgres in Mumbai
 
 Requirement: nothing should strain or need re-architecting as advisors, clients and data grow, at the lowest
 running cost.
@@ -235,7 +235,7 @@ running cost.
 | Part | Service | What it does | Grows how |
 |---|---|---|---|
 | App server + API | **Cloudflare Workers** (Paid plan, $5/month) | Web app, client app, API. Runs in Cloudflare's data centres nearest the user | Automatically, with no servers to size or patch |
-| Database | **PlanetScale Postgres, Mumbai (`ap-south`)**, created and billed through the Cloudflare dashboard | All advisor and client data, with row-level security per practice | Resize the node; failover and read replicas on the HA plan |
+| Database | **Supabase Postgres, Mumbai** (Free plan to start), used only as plain Postgres from the server | All advisor and client data, with row-level security per practice | Supabase Pro, or move to PlanetScale HA (Mumbai) by changing one connection setting |
 | DB connection | **Cloudflare Hyperdrive** (included in Workers Paid) | Pools and reuses database connections, so thousands of requests do not open thousands of connections | Built in |
 | Scheduled jobs | **Cron Triggers** | Nightly NAV import, morning briefing, monthly statements | Built in; up to 15 min CPU per run |
 | Background work | **Cloudflare Queues** | Each mailback file, CAS PDF or statement is one job, retried on failure. One bad file never blocks others | Spreads out automatically |
@@ -252,21 +252,32 @@ Code stack: **TypeScript, TanStack Start** (what FundBuddy already uses, and it 
 
 | Stage | Database | Approx. total / month |
 |---|---|---|
-| Building + father | PlanetScale PS-5 single node ($5) + Workers Paid ($5) | **~$10 (~₹900)** |
-| First paying advisor onward | PlanetScale **HA (3 nodes, automatic failover)**, about $30 + Workers $5 + SES | **~$35–40 (~₹3,100–3,500)** |
+| Building + father + free beta | Supabase Free, Mumbai ($0) + Workers Paid ($5) | **~$5 (~₹450)** |
+| First paying advisor onward | Supabase Pro, Mumbai ($25, daily backups) **or** PlanetScale HA, Mumbai (~$30, automatic failover) + Workers $5 + SES | **~$30–40 (~₹2,700–3,500)** |
 | ~500 advisors | Larger HA node + Workers usage beyond included limits | roughly ₹8,000–12,000 (still under 5% of revenue) |
 
 Workers Paid includes 10 million requests and 30 million CPU-milliseconds a month. That is far more than hundreds
 of advisors use. Prices are from Cloudflare's and PlanetScale's pages and announcements as of Oct 2026; check the
 Mumbai price on the PlanetScale calculator before creating the database.
 
+### Why Supabase Free first
+
+- Best free plan with a **Mumbai** server. Neon and Aiven have no India region; PlanetScale has no free plan.
+- **Limits and how we handle them:**
+  - 500 MB of data: enough for your father plus a free beta of 10–20 advisors.
+  - No backups on Free: our own nightly encrypted `pg_dump` to R2 covers this from day one.
+  - Pauses after 7 days of no activity: the nightly NAV job queries it every day, so it never pauses.
+- **The Feb 2026 ISP block does not affect this design.** Browsers never contact `supabase.co`; only Cloudflare's
+  servers do, through Hyperdrive. Supabase's Data API is switched off and the `anon`/`authenticated` grants are
+  revoked (the Anqulas Docs lesson).
+- Upgrade before the first paying advisor. Supabase Pro adds daily backups; PlanetScale HA adds automatic failover.
+  Same code either way.
+
 ### Why this beats the alternatives
 
 - **vs. a single server (DigitalOcean / Lightsail):** no server to patch and nothing to resize when load jumps on
   the 1st of the month. DigitalOcean also has no free database plan: managed Postgres starts at $15/month, and new
   accounts may now get only $5 of credit.
-- **vs. Supabase:** no paying for unused extras, point-in-time recovery is not a $100/month add-on, and the app does
-  not depend on `supabase.co` (blocked by Indian ISPs in Feb 2026).
 - **vs. Cloudflare D1 (Cloudflare's own database):** D1 is SQLite, has no India location (only "Asia-Pacific", or
   EU/FedRAMP jurisdictions) and caps the size of each database. Postgres in Mumbai keeps client data in India, and
   gives row-level security and room to grow.
@@ -285,7 +296,7 @@ Mumbai price on the PlanetScale calculator before creating the database.
 
 ### Backups
 
-- PlanetScale's automatic backups.
+- The database provider's automatic backups (Supabase Pro or PlanetScale, once on a paid plan).
 - **Plus our own nightly encrypted `pg_dump`** to R2, made by a scheduled GitHub Action and kept 30 days.
 - A restore drill once a month, so a backup is known to work before it is needed.
 
@@ -305,7 +316,7 @@ Mumbai price on the PlanetScale calculator before creating the database.
 
 - 30-day free trial.
 - Founding offer: Growth at ₹499 for the first 50 advisors, locked for 2 years.
-- Hosting is about ₹3,500, so **7 paying advisors cover it.** At 100 advisors (around ₹70,000 MRR), hosting is
+- Hosting is about ₹3,000–3,500 once paid plans start, so **about 7 paying advisors cover it.** At 100 advisors (around ₹70,000 MRR), hosting is
   under 10%.
 - Comparable Indian back-office tools sell at ₹100 per user per month at the low end, and much higher for full
   suites. ₹499 for automatic mailback import, a branded client app and WhatsApp statements is easy to say yes to.
@@ -379,6 +390,6 @@ and parsers must be built against real files. Names and PANs can be masked.
 ## Open decisions
 
 1. Isolation: shared Postgres + RLS + per-practice encryption (recommended), or a separate database per advisor?
-2. Environment: Cloudflare Workers + PlanetScale Postgres in Mumbai (recommended)?
+2. Environment: Cloudflare Workers + Supabase Free in Mumbai now, upgraded at the first paying advisor (recommended)?
 3. Product name and domain. Is "FundBuddy" final? It is needed for the forwarding addresses and branding.
 4. Does your father hold an ARN as an individual MFD, and does he use CAMS and KFintech mailback today?
