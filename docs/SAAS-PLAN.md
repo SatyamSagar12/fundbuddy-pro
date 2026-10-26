@@ -52,32 +52,25 @@ Smaller items:
 
 ---
 
-## 1. What to build on
+## 1. A separate project, built fresh
 
-**Recommendation: build the new FundBuddy on the Docchase codebase.**
+FundBuddy is its own product. It has its own repo, database, Cloudflare account, domain, branding, users and
+billing. Nothing is shared with Anqulas Docs (Docchase) at runtime, and a change in one never affects the other.
 
-Do not keep extending the Lovable/TanStack app.
+What it takes from Docchase is **lessons, not code links**. Docchase has already solved these problems, so
+FundBuddy repeats the same designs, written fresh for FundBuddy's stack:
 
-Docchase already has the hard, boring SaaS parts, tested and reviewed. FundBuddy would otherwise rebuild all of it:
+- Database-enforced separation between customers (row-level security)
+- Mandatory two-step sign-in and login lockouts
+- Prepaid plans with a UPI / PhonePe checkout, and a platform admin console
+- Append-only audit log
+- The security mistakes listed in Docchase's `docs/research/security-legal-cost-review.md`, avoided from day one
 
-| Needed for FundBuddy SaaS | Already in Docchase |
-|---|---|
-| Sign-up, email verification, trial | `services/signup.ts` |
-| Mandatory 2FA, passkeys, new-device alerts, lockouts | `staff-mfa.ts`, `passkeys.ts`, `security-alerts.ts` |
-| Tenant isolation enforced by Postgres row-level security | `src/server/db-scope.ts` + RLS migrations |
-| Staff roles, "only my clients" for staff | `staff-access.ts` (maps directly to MFD sub-brokers) |
-| Plans, limits, UPI / PhonePe / PayPal, billing lock | `plans.ts`, `billing.ts`, `payments/` |
-| Platform admin console (your view of all advisors) | `/platform` |
-| Email, WhatsApp (advisor's own number), push, Android app | `mailer.ts`, `whatsapp*.ts`, `push.ts`, `mobile/` |
-| Hindi for client-facing text | `src/lib/i18n` |
-| Client portal with its own login + 2FA | `client-accounts.ts` |
-| Append-only audit log, retention, backups | `activity-*.ts`, `retention.ts`, `scripts/backup.sh` |
-| AI connector (ask Claude about your book) | `docs/CONNECTOR.md` |
-| Lessons already learned (Data API lock, cron double-send, etc.) | `docs/research/security-legal-cost-review.md` |
+Most of Docchase's code would not run unchanged anyway. It is built for a Node.js server, and FundBuddy will run on
+Cloudflare Workers (section 5). Where a small, self-contained piece fits as-is (for example Indian financial-year
+date helpers, or CSV formula-injection guards), it is copied once into FundBuddy and owned by FundBuddy from then on.
 
-Plan: create a fresh repo (or a fresh `main` in `fundbuddy-pro`) from Docchase's platform layer. Then remove the
-CA-specific parts (document requests, GST, Tally, DSC, compliance) and add the mutual fund engine described below.
-Stack: Next.js 16, React 19, Prisma 7, Postgres 17.
+The current Lovable app keeps running for your father, locked down (section 0), until the new one replaces it.
 
 ---
 
@@ -189,10 +182,10 @@ five-item menu **Home · Clients · SIPs · Reports · Settings**.
    advisor's. Read-only. This is the feature advisors show their clients.
 8. **Capital gains report per financial year.** FIFO, short and long term, using current Indian rules (equity LTCG
    12.5% above ₹1.25 L, STCG 20%, grandfathering at 31 Jan 2018, debt funds bought after 1 Apr 2023 taxed at slab).
-   Rules are kept in one versioned table, as Docchase does with due dates.
-9. **Staff and sub-brokers.** The owner sees everything; a sub-broker sees only their own clients. This reuses
-   Docchase staff access.
-10. **Security as in Docchase.** Mandatory 2FA, encrypted PAN and bank details, audit log, India-only data.
+   Rules are kept in one versioned table, so a Budget change is a one-line update.
+9. **Staff and sub-brokers.** The owner sees everything; a sub-broker sees only their own clients,
+   enforced by the database.
+10. **Security from day one.** Mandatory 2FA, encrypted PAN and bank details, audit log, database in India.
 
 ### v2 — the "wow" features (after 5–10 paying advisors)
 
@@ -210,7 +203,7 @@ five-item menu **Home · Clients · SIPs · Reports · Settings**.
 14. **Birthday and anniversary wishes** via WhatsApp, automatic and approved once.
 15. **Shareable calculators** (SIP, step-up, goal, retirement) with the advisor's branding, for WhatsApp status and
     lead capture. A lead lands in Clients.
-16. **Ask FundBuddy (AI).** Uses Docchase's MCP connector pattern. The advisor asks Claude "whose SIPs bounced this
+16. **Ask FundBuddy (AI).** An MCP connector (the same idea Anqulas Docs uses, built separately). The advisor asks Claude "whose SIPs bounced this
     month?" or "draft a message to the Verma family about their gains". It runs on the advisor's own Claude
     account, so it costs us nothing.
 17. **Other assets, typed in by hand** (FDs, insurance, PPF, stocks, as values only), for a net-worth view.
@@ -232,45 +225,75 @@ five-item menu **Home · Clients · SIPs · Reports · Settings**.
 
 ---
 
-## 5. Hosting and cost (cheapest without cutting safety)
+## 5. Environment: Cloudflare + PlanetScale Postgres (Mumbai)
 
-The workload is mostly background work: parsing mail, the nightly NAV import and revaluing holdings. A small
-always-on server suits it better than serverless functions, which have time limits and few cron jobs.
+Requirement: nothing should strain or need re-architecting as advisors, clients and data grow, at the lowest
+running cost.
 
-| Stage | Setup | Approx. ₹/month |
+### The setup
+
+| Part | Service | What it does | Grows how |
+|---|---|---|---|
+| App server + API | **Cloudflare Workers** (Paid plan, $5/month) | Web app, client app, API. Runs in Cloudflare's data centres nearest the user | Automatically, with no servers to size or patch |
+| Database | **PlanetScale Postgres, Mumbai (`ap-south`)**, created and billed through the Cloudflare dashboard | All advisor and client data, with row-level security per practice | Resize the node; failover and read replicas on the HA plan |
+| DB connection | **Cloudflare Hyperdrive** (included in Workers Paid) | Pools and reuses database connections, so thousands of requests do not open thousands of connections | Built in |
+| Scheduled jobs | **Cron Triggers** | Nightly NAV import, morning briefing, monthly statements | Built in; up to 15 min CPU per run |
+| Background work | **Cloudflare Queues** | Each mailback file, CAS PDF or statement is one job, retried on failure. One bad file never blocks others | Spreads out automatically |
+| Inbound mailback | **Cloudflare Email Routing + Email Worker** | Receives forwarded CAMS/KFintech mails at each practice's private address | Built in, free |
+| Files | **Cloudflare R2** | Raw mails, CAS PDFs, generated statements (encrypted, private) | 10 GB free, then about $0.015/GB; no download fees |
+| Outbound email | **Amazon SES (Mumbai)** | Sign-up mails, statements, briefings | About $0.10 per 1,000 |
+| WhatsApp | Advisor's own WhatsApp Business number | Briefings, statements, wishes | Meta bills the advisor |
+| Monitoring | Workers logs + Sentry free tier | Errors and failed jobs reported, not silent | |
+
+Code stack: **TypeScript, TanStack Start** (what FundBuddy already uses, and it deploys to Workers), **Drizzle ORM**
+(small and Workers-friendly) and **Postgres row-level security**. GitHub Actions deploys `main` automatically, as today.
+
+### Cost
+
+| Stage | Database | Approx. total / month |
 |---|---|---|
-| Building + father only | Local dev; current Lovable app keeps running (locked down) | 0 |
-| Beta → ~100 advisors | **DigitalOcean Bangalore:** one small server (Droplet, 2 GB, ~$12) for app + worker, plus **Managed Postgres** (~$15, daily backups + 7-day point-in-time recovery included, same data centre). **Cloudflare** in front (free). **Cloudflare R2** for PDFs and raw mails (free up to 10 GB). Extra nightly **encrypted `pg_dump` to R2**, kept 30 days, with a monthly restore test. **Amazon SES Mumbai** for email (about ₹9 per 1,000). **Cloudflare Email Routing** for inbound mail (free). Sentry and Better Stack free tiers. | **~₹2,400** |
-| 100+ advisors | Bigger Droplet and database plan; add a standby database node for automatic failover | ~₹5,000–7,000 |
+| Building + father | PlanetScale PS-5 single node ($5) + Workers Paid ($5) | **~$10 (~₹900)** |
+| First paying advisor onward | PlanetScale **HA (3 nodes, automatic failover)**, about $30 + Workers $5 + SES | **~$35–40 (~₹3,100–3,500)** |
+| ~500 advisors | Larger HA node + Workers usage beyond included limits | roughly ₹8,000–12,000 (still under 5% of revenue) |
 
-### Database: why not Supabase
+Workers Paid includes 10 million requests and 30 million CPU-milliseconds a month. That is far more than hundreds
+of advisors use. Prices are from Cloudflare's and PlanetScale's pages and announcements as of Oct 2026; check the
+Mumbai price on the PlanetScale calculator before creating the database.
 
-The new app talks to the database only from the server, and does its own sign-in (Docchase's). So it needs
-**plain Postgres** and none of Supabase's extras. Any provider below works with the same code; moving later only
-changes the connection string.
+### Why this beats the alternatives
 
-| Option | India region | Approx. cost | Backups | Verdict |
-|---|---|---|---|---|
-| **DigitalOcean Managed Postgres** | Bangalore | ~$15 (~₹1,300) | Daily + 7-day point-in-time recovery included | **Recommended.** Cheapest managed option with recovery included, next to the app server |
-| PlanetScale Postgres (PS-5) | Mumbai | ~$5 (~₹450) single node; ~$30 with failover | Included | Good cheaper alternative; confirm the Mumbai price and backup terms before choosing |
-| Postgres on the same server (Docker) | Wherever the server is | ₹0 extra | Only what we script (`pg_dump`, or WAL-G to R2 for point-in-time) | Cheapest; you become the database admin. Fine while it is only father's data |
-| AWS RDS / Lightsail database | Mumbai | ~$15+ | Included | Fine, more AWS complexity |
-| Supabase Pro | Mumbai | $25 (~₹2,200); point-in-time recovery +$100/month | Daily (7 days) | Pays for auth, storage and APIs we would not use. Indian ISPs blocked `supabase.co` under Section 69A in Feb 2026 (later restored); a repeat would hit apps that use it from the browser |
-| Neon | No (Singapore nearest) | Usage-based | Included | Data leaves India and every query is slower. No |
-| Nile (Postgres with built-in "database per tenant") | Not confirmed | Unpublished | — | Interesting for the per-advisor wish, but too young and unclear for client financial data. Revisit later |
+- **vs. a single server (DigitalOcean / Lightsail):** no server to patch and nothing to resize when load jumps on
+  the 1st of the month. DigitalOcean also has no free database plan: managed Postgres starts at $15/month, and new
+  accounts may now get only $5 of credit.
+- **vs. Supabase:** no paying for unused extras, point-in-time recovery is not a $100/month add-on, and the app does
+  not depend on `supabase.co` (blocked by Indian ISPs in Feb 2026).
+- **vs. Cloudflare D1 (Cloudflare's own database):** D1 is SQLite, has no India location (only "Asia-Pacific", or
+  EU/FedRAMP jurisdictions) and caps the size of each database. Postgres in Mumbai keeps client data in India, and
+  gives row-level security and room to grow.
+- **No lock-in:** it is standard Postgres, so the database can move to AWS or DigitalOcean by changing one connection
+  setting.
 
-Zero-ops alternative: Vercel Pro + DigitalOcean Managed Postgres. No server patching, but the mail and NAV jobs
-would still need a small worker.
+### Limits to design around (already planned for)
 
-Notes:
+- A Worker has about 128 MB of memory. Mailback ZIPs and CAS PDFs are a few MB, so this is fine. Each file is
+  handled as its own queued job, and never all at once. If a very large file ever appears, Cloudflare Containers is
+  the escape hatch, with no redesign.
+- Native Node libraries do not run on Workers. Password hashing uses a WebAssembly Argon2, and ZIP files with
+  passwords use a pure-JS library.
+- Data at rest: the database is in Mumbai. R2 files are in Cloudflare's Asia-Pacific region (no India-only option
+  today). The public wording will say exactly that.
 
-- **WhatsApp:** each advisor connects their own WhatsApp Business number, and Meta bills them directly (the
-  Docchase model). Platform cost is ₹0.
-- **Data size is small.** A large advisor (1,000 clients, 10 years) is about 1 million transactions, roughly
-  300 MB. Storing NAVs only for held schemes keeps the shared tables to a few hundred MB per year.
-- **Fixed costs:** domain about ₹1,200 a year. Before taking money, register a Pvt Ltd company and decide GST with
-  your CA, as the Docchase review already says.
-- Check provider prices on their official pages before buying; they change.
+### Backups
+
+- PlanetScale's automatic backups.
+- **Plus our own nightly encrypted `pg_dump`** to R2, made by a scheduled GitHub Action and kept 30 days.
+- A restore drill once a month, so a backup is known to work before it is needed.
+
+### Fixed costs
+
+- Domain: about ₹1,200 a year.
+- Before taking money: register a Pvt Ltd company, and decide GST with your CA.
+- Data size is small. A large advisor (1,000 clients, 10 years) is about 1 million transactions, roughly 300 MB.
 
 ### Pricing suggestion
 
@@ -281,8 +304,8 @@ Notes:
 | Pro | Unlimited | 10 | 1,999 | 19,990 |
 
 - 30-day free trial.
-- Founding offer: Growth at ₹499 for the first 50 advisors, locked for 2 years. This reuses Docchase's founding code.
-- Hosting is about ₹2,500, so **5 paying advisors cover it.** At 100 advisors (around ₹70,000 MRR), hosting is
+- Founding offer: Growth at ₹499 for the first 50 advisors, locked for 2 years.
+- Hosting is about ₹3,500, so **7 paying advisors cover it.** At 100 advisors (around ₹70,000 MRR), hosting is
   under 10%.
 - Comparable Indian back-office tools sell at ₹100 per user per month at the low end, and much higher for full
   suites. ₹499 for automatic mailback import, a branded client app and WhatsApp statements is easy to say yes to.
@@ -296,7 +319,7 @@ Notes:
 - Money is stored with its currency. Number formatting follows the practice's locale (lakh/crore or million).
 - Tax rules are a per-country module. India is first; other countries show "gains" without tax until added.
 - Identity is "tax id" with a type (PAN for India), not a hard-coded `pan` column.
-- Pricing already has a `$` column (as in Docchase's plans).
+- Plans carry a `$` price from the start.
 
 ---
 
@@ -340,7 +363,7 @@ Father's data migration:
 | Phase | Delivers | Rough size |
 |---|---|---|
 | 0 | Lock down current app (section 0) | 15 min, today |
-| 1 | New app from Docchase platform layer: signup, 2FA, practices + RLS, staff roles, billing, platform console; father's data migrated | 1–2 weeks |
+| 1 | Environment (Cloudflare Workers + PlanetScale Mumbai + Hyperdrive + R2 + Queues + CI), then sign-up, 2FA, practices + RLS, staff roles, billing, platform console; father's data migrated | 2 weeks |
 | 2 | Scheme master + daily NAV, valuation, XIRR; CAMS/KFintech file parsers (upload); CAS PDF import | 2 weeks |
 | 3 | Forwarding address + automatic ingest; SIP book; morning briefing (app + WhatsApp/email) | 1–2 weeks |
 | 4 | Branded PDF reports, monthly auto-statements, client portal (OTP), capital gains | 2 weeks |
@@ -356,7 +379,6 @@ and parsers must be built against real files. Names and PANs can be masked.
 ## Open decisions
 
 1. Isolation: shared Postgres + RLS + per-practice encryption (recommended), or a separate database per advisor?
-2. Build on the Docchase codebase (recommended), or keep the Lovable/TanStack app?
-3. Hosting: DigitalOcean Bangalore server + Managed Postgres (~₹2,400/month, recommended), PlanetScale Mumbai database (cheaper, verify terms), or Postgres on the server itself (cheapest, you look after it)?
-4. Product name and domain. Is "FundBuddy" final? It is needed for the forwarding addresses and branding.
-5. Does your father hold an ARN as an individual MFD, and does he use CAMS and KFintech mailback today?
+2. Environment: Cloudflare Workers + PlanetScale Postgres in Mumbai (recommended)?
+3. Product name and domain. Is "FundBuddy" final? It is needed for the forwarding addresses and branding.
+4. Does your father hold an ARN as an individual MFD, and does he use CAMS and KFintech mailback today?
