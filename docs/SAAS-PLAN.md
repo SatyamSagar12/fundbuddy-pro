@@ -1,4 +1,4 @@
-# FundBuddy Pro — SaaS plan
+# Anqulas Folio — SaaS plan (formerly FundBuddy)
 
 Status: proposal, 26 Oct 2026. Nothing here is built yet. Decisions still open are listed at the end.
 
@@ -54,11 +54,11 @@ Smaller items:
 
 ## 1. A separate project, built fresh
 
-FundBuddy is its own product. It has its own repo, database, Cloudflare account, domain, branding, users and
-billing. Nothing is shared with Anqulas Docs (Docchase) at runtime, and a change in one never affects the other.
+Anqulas Folio is its own product. It lives in `folio/` in this repo, and has its own database, Cloudflare Worker,
+subdomain (`folio.anqulas.com`), users and billing. Nothing is shared with Anqulas Docs (Docchase) at runtime, and a change in one never affects the other.
 
 What it takes from Docchase is **lessons, not code links**. Docchase has already solved these problems, so
-FundBuddy repeats the same designs, written fresh for FundBuddy's stack:
+Folio repeats the same designs, written fresh for Folio's stack:
 
 - Database-enforced separation between customers (row-level security)
 - Mandatory two-step sign-in and login lockouts
@@ -66,9 +66,9 @@ FundBuddy repeats the same designs, written fresh for FundBuddy's stack:
 - Append-only audit log
 - The security mistakes listed in Docchase's `docs/research/security-legal-cost-review.md`, avoided from day one
 
-Most of Docchase's code would not run unchanged anyway. It is built for a Node.js server, and FundBuddy will run on
+Most of Docchase's code would not run unchanged anyway. It is built for a Node.js server, and Folio runs on
 Cloudflare Workers (section 5). Where a small, self-contained piece fits as-is (for example Indian financial-year
-date helpers, or CSV formula-injection guards), it is copied once into FundBuddy and owned by FundBuddy from then on.
+date helpers, or CSV formula-injection guards), it is copied once into Folio and owned by Folio from then on.
 
 The current Lovable app keeps running for your father, locked down (section 0), until the new one replaces it.
 
@@ -115,13 +115,13 @@ CAMS and KFintech email distributors their "mailback" reports. Examples:
 
 They arrive as password-protected ZIP files (DBF, XLS or CSV inside), with a password the distributor sets.
 
-How FundBuddy receives them, cheapest and safest first:
+How Folio receives them, cheapest and safest first:
 
 1. **Forwarding address (recommended).** Every practice gets a private address like
-   `mb-7f3k9q@in.fundbuddy.app`. The advisor adds one Gmail/Outlook filter: "from CAMS or KFintech → forward".
+   `mb-7f3k9q@in.folio.anqulas.com`. The advisor adds one Gmail/Outlook filter: "from CAMS or KFintech → forward".
    - Mail arrives through **Cloudflare Email Routing → Email Worker** (free). The raw mail goes to storage and a
      row goes to `ingest_messages`.
-   - Gmail sends a confirmation code to new forwarding addresses. FundBuddy shows that code in the app, so setup
+   - Gmail sends a confirmation code to new forwarding addresses. Folio shows that code in the app, so setup
      takes about 2 minutes.
    - Only mail from the registrars' real domains is accepted (SPF/DKIM checked). Everything else is dropped.
 2. **Upload button.** The same parsers accept files dragged in by hand. This is the fallback, and also how
@@ -148,7 +148,7 @@ Parsing rules:
 ### 3.3 Client CAS import (onboarding in one step)
 
 - The client downloads their CAS PDF from MF Central or CAMS. The password is their PAN.
-- The advisor uploads it. FundBuddy reads every folio, including other distributors' and direct plans, and builds
+- The advisor uploads it. Folio reads every folio, including other distributors' and direct plans, and builds
   the portfolio.
 - Held-away folios are marked as such. This is the fastest way to bring a new client on board.
 
@@ -203,7 +203,7 @@ five-item menu **Home · Clients · SIPs · Reports · Settings**.
 14. **Birthday and anniversary wishes** via WhatsApp, automatic and approved once.
 15. **Shareable calculators** (SIP, step-up, goal, retirement) with the advisor's branding, for WhatsApp status and
     lead capture. A lead lands in Clients.
-16. **Ask FundBuddy (AI).** An MCP connector (the same idea Anqulas Docs uses, built separately). The advisor asks Claude "whose SIPs bounced this
+16. **Ask Folio (AI).** An MCP connector (the same idea Anqulas Docs uses, built separately). The advisor asks Claude "whose SIPs bounced this
     month?" or "draft a message to the Verma family about their gains". It runs on the advisor's own Claude
     account, so it costs us nothing.
 17. **Other assets, typed in by hand** (FDs, insurance, PPF, stocks, as values only), for a net-worth view.
@@ -245,7 +245,7 @@ running cost.
 | WhatsApp | Advisor's own WhatsApp Business number | Briefings, statements, wishes | Meta bills the advisor |
 | Monitoring | Workers logs + Sentry free tier | Errors and failed jobs reported, not silent | |
 
-Code stack: **TypeScript, TanStack Start** (what FundBuddy already uses, and it deploys to Workers), **Drizzle ORM**
+Code stack: **TypeScript, TanStack Start** (what the old FundBuddy app already uses, and it deploys to Workers), **Drizzle ORM**
 (small and Workers-friendly) and **Postgres row-level security**. GitHub Actions deploys `main` automatically, as today.
 
 ### Cost
@@ -374,7 +374,7 @@ Father's data migration:
 | Phase | Delivers | Rough size |
 |---|---|---|
 | 0 | Lock down current app (section 0) | 15 min, today |
-| 1 | Environment (Cloudflare Workers + PlanetScale Mumbai + Hyperdrive + R2 + Queues + CI), then sign-up, 2FA, practices + RLS, staff roles, billing, platform console; father's data migrated | 2 weeks |
+| 1 | Environment (Cloudflare Workers + Postgres in Mumbai + Hyperdrive + CI), sign-up, 2FA, practices + RLS, encryption, father's data import (**done**, see `folio/README.md`). Still to do: password reset, lost-phone recovery, staff invites, billing, platform console | 2 weeks |
 | 2 | Scheme master + daily NAV, valuation, XIRR; CAMS/KFintech file parsers (upload); CAS PDF import | 2 weeks |
 | 3 | Forwarding address + automatic ingest; SIP book; morning briefing (app + WhatsApp/email) | 1–2 weeks |
 | 4 | Branded PDF reports, monthly auto-statements, client portal (OTP), capital gains | 2 weeks |
@@ -387,9 +387,9 @@ and parsers must be built against real files. Names and PANs can be masked.
 
 ---
 
-## Open decisions
+## Decisions
 
-1. Isolation: shared Postgres + RLS + per-practice encryption (recommended), or a separate database per advisor?
-2. Environment: Cloudflare Workers + Supabase Free in Mumbai now, upgraded at the first paying advisor (recommended)?
-3. Product name and domain. Is "FundBuddy" final? It is needed for the forwarding addresses and branding.
-4. Does your father hold an ARN as an individual MFD, and does he use CAMS and KFintech mailback today?
+1. Isolation: one shared Postgres with row-level security and per-practice encryption. **Decided.**
+2. Environment: Cloudflare Workers + Supabase Free in Mumbai, upgraded at the first paying advisor. **Decided.**
+3. Name: **Anqulas Folio**, at `folio.anqulas.com`, built in `folio/` of this repo. **Decided.**
+4. Open: does your father hold an ARN, and does he get CAMS and KFintech mailback emails today?

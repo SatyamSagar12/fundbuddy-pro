@@ -1,0 +1,92 @@
+# Anqulas Folio (folio/): checks on every change, and a manual deploy to Cloudflare.
+#
+# Deploy needs these repository secrets (Settings -> Secrets and variables -> Actions):
+#   FOLIO_CLOUDFLARE_API_TOKEN  - Cloudflare token with "Workers Scripts: Edit" (and "Hyperdrive: Edit")
+#   CLOUDFLARE_ACCOUNT_ID       - already set for the old app
+#   FOLIO_DATABASE_URL          - Supabase (Mumbai) *session pooler* URL, used only to run migrations
+# The Worker's own secrets (MASTER_KEY, SESSION_SECRET, SES_*) are set once with `wrangler secret put`.
+name: Anqulas Folio
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths: ["folio/**", ".github/workflows/folio.yml"]
+  pull_request:
+    paths: ["folio/**", ".github/workflows/folio.yml"]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Run migrations and deploy to Cloudflare after the checks pass"
+        type: boolean
+        default: false
+
+concurrency:
+  group: folio-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: folio
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: folio/package-lock.json
+      - run: npm ci
+      - name: Test databases (non-superuser owner, like Supabase)
+        run: |
+          psql -h localhost -U postgres -c "CREATE ROLE folio_owner LOGIN PASSWORD 'folio_owner' CREATEROLE"
+          psql -h localhost -U postgres -c "CREATE DATABASE folio_test OWNER folio_owner"
+          DATABASE_URL=postgres://folio_owner:folio_owner@localhost:5432/folio_test npm run db:migrate
+      - run: npx wrangler types
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Generated migrations match the schema
+        run: |
+          npx drizzle-kit generate --name ci-check
+          if [ -n "$(git status --porcelain db/migrations)" ]; then
+            echo "::error::src/server/db/schema.ts changed without a migration. Run: npm run db:generate"
+            git status --porcelain db/migrations
+            exit 1
+          fi
+
+  deploy:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: folio/package-lock.json
+      - run: npm ci
+      - name: Migrate the database
+        env:
+          DATABASE_URL: ${{ secrets.FOLIO_DATABASE_URL }}
+        run: npm run db:migrate
+      - name: Build and deploy the Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.FOLIO_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy

@@ -1,0 +1,10 @@
+# Copy to .dev.vars for local development. Production values are set with `wrangler secret put`.
+# 32 random bytes, base64. Wraps every practice's own data key. Never change it once real data exists.
+MASTER_KEY=
+# 32 random bytes, base64. Signs session and verification tokens.
+SESSION_SECRET=
+# Amazon SES (Mumbai). Leave empty locally: mail is then printed to the console.
+SES_ACCESS_KEY_ID=
+SES_SECRET_ACCESS_KEY=
+# Comma-separated emails allowed into /platform.
+PLATFORM_ADMIN_EMAILS=

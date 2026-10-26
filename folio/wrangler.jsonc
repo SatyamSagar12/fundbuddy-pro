@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "anqulas-folio",
+  // Our own entry: TanStack Start's fetch handler plus cron jobs (and, later, inbound mail and queues).
+  "main": "src/server.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Runs the Worker near the database (Mumbai) rather than near each visitor.
+  "placement": { "mode": "smart" },
+  "vars": {
+    "APP_URL": "https://folio.anqulas.com",
+    "MAIL_FROM": "Anqulas Folio <no-reply@mail.folio.anqulas.com>",
+    "SES_REGION": "ap-south-1"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      // Create with: npx wrangler hyperdrive create folio-db --connection-string="<Supabase session pooler URL>"
+      "id": "00000000000000000000000000000000",
+      // Used by `vite dev` only; production goes through Hyperdrive.
+      "localConnectionString": "postgres://folio_owner:folio_owner@127.0.0.1:5432/folio"
+    }
+  ],
+  "triggers": {
+    // Hourly housekeeping (expired sessions, rate-limit rows). NAV import is added in phase 2.
+    "crons": ["17 * * * *"]
+  }
+}
