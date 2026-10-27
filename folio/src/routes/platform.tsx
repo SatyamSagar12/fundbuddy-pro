@@ -8,6 +8,7 @@ import {
   importNavsNow,
   recordPayment,
   resetUserAuthenticator,
+  setBillingExempt,
   setPracticeStatus,
 } from "@/functions/platform";
 import { Button, Card, Field, Notice } from "@/components/ui";
@@ -222,6 +223,18 @@ function PlatformPage() {
                     }}
                   >
                     {p.status === "suspended" ? "Restore" : "Suspend"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(
+                        () => setBillingExempt({ data: { practiceId: p.id, exempt: !p.billingExempt } }),
+                        p.billingExempt ? "Billing turned back on." : `${p.name} is now free of charge.`,
+                      )
+                    }
+                  >
+                    {p.billingExempt ? "Charge again" : "Make free of charge"}
                   </Button>
                 </div>
               )}

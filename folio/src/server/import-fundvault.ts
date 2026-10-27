@@ -5,7 +5,7 @@
  *   twice and adds only rows that are new.
  * - PAN, bank and nominee details are encrypted with the practice's own key before they are written.
  * - The four sample clients the old app was created with (ids 1111…, 2222…, 3333…, 4444…) are skipped.
- * - Scheme names stay as typed; matching them to AMFI schemes comes with the scheme master (phase 2).
+ * - Scheme names stay as typed; the Import page then links the ones that match an AMFI scheme exactly.
  */
 import { and, eq, sql } from "drizzle-orm";
 import { withPractice } from "./db/scope";
@@ -16,7 +16,7 @@ export type OldClient = Record<string, string>;
 export type OldInvestment = Record<string, string>;
 export type OldSip = Record<string, string>;
 
-const SAMPLE_IDS = new Set([
+export const OLD_SAMPLE_IDS = new Set([
   "11111111-1111-1111-1111-111111111111",
   "22222222-2222-2222-2222-222222222222",
   "33333333-3333-3333-3333-333333333333",
@@ -72,7 +72,7 @@ async function importInTransaction(
     for (const c of data.clients) {
       const legacyId = blank(c["id"]);
       if (!legacyId) continue;
-      if (SAMPLE_IDS.has(legacyId)) {
+      if (OLD_SAMPLE_IDS.has(legacyId)) {
         report.clients.skippedSamples++;
         continue;
       }
@@ -130,7 +130,7 @@ async function importInTransaction(
       const legacyId = blank(inv["id"]);
       const clientLegacy = blank(inv["client_id"]);
       if (!legacyId || !clientLegacy) continue;
-      if (SAMPLE_IDS.has(clientLegacy)) continue;
+      if (OLD_SAMPLE_IDS.has(clientLegacy)) continue;
       const investorId = idByLegacy.get(clientLegacy);
       const amount = Number(inv["amount"]);
       if (!investorId || !Number.isFinite(amount)) {
@@ -160,7 +160,7 @@ async function importInTransaction(
       const legacyId = blank(s["id"]);
       const clientLegacy = blank(s["client_id"]);
       if (!legacyId || !clientLegacy) continue;
-      if (SAMPLE_IDS.has(clientLegacy)) continue;
+      if (OLD_SAMPLE_IDS.has(clientLegacy)) continue;
       const investorId = idByLegacy.get(clientLegacy);
       const amount = Number(s["amount"]);
       if (!investorId || !Number.isFinite(amount)) {

@@ -278,16 +278,24 @@ The GitHub job `.github/workflows/folio-publish.yml` does the same from GitHub A
 
 ## Moving your father's data
 
+From the app, no secrets needed:
+
 1. **Export the old data.** In the old app's Lovable project → Cloud → Database, export the tables `clients`,
-   `investments` and `sips` as CSV. Save them as `clients.csv`, `investments.csv` and `sips.csv` in one folder on
-   your computer, not in this repo.
+   `investments` and `sips` as CSV.
 2. **Create his account.** Your father signs up at folio.anqulas.com with his own email.
-3. **Dry run first**, then the real import:
-   ```sh
-   DATABASE_URL='<session pooler URL>' MASTER_KEY='<the production MASTER_KEY>' \
-     npx tsx scripts/import-fundvault.ts --dir <folder> --owner <his email> --dry-run
-   ```
-   Check that it says "Totals match the old app", then run it again without `--dry-run`. His practice is marked
-   billing-exempt.
-4. Keep using the old app alongside for a few weeks. Delete the CSV files once done; they contain PANs and bank
-   details.
+3. **Make his practice free of charge.** You (platform admin) open `/platform` → his practice → Manage →
+   **Make free of charge**. Without this, his trial's client limit (750) still applies, and the trial ends after
+   30 days.
+4. **Import.** Signed in as him: Import → **Old FundVault app** → choose the three CSV files → **Check (saves
+   nothing)**.
+   - It shows what comes over and compares the total invested and the active SIPs with the old app.
+   - When it says "The totals match the old app", press **Import into Folio**.
+   - Running it again never doubles anything.
+5. **After the import:**
+   - Scheme names that exactly match an AMFI scheme are linked at once; match the rest under Match schemes.
+   - Importing his CAMS / KFintech reports then replaces the typed entries with the registrar's exact ones.
+6. **Keep the old app** alongside for a few weeks. Delete the CSV files from your computer once done: they contain
+   PANs and bank details.
+
+Nothing touches the old app or its database. `scripts/import-fundvault.ts` does the same from a terminal, if ever
+needed.

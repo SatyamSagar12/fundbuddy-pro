@@ -1,8 +1,8 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { FileSpreadsheet, FileText, Lock } from "lucide-react";
+import { Check, FileSpreadsheet, FileText, History, Lock, X } from "lucide-react";
 import { useState } from "react";
 import { clsx } from "clsx";
-import { importClients, previewImport, runImport } from "@/functions/imports";
+import { importClients, importOldApp, previewImport, runImport } from "@/functions/imports";
 import { Button, Card, inputClass, Notice, order, PageHeader, SelectField } from "@/components/ui";
 import { day, money, txnType, units as unitsText } from "@/lib/format";
 import { readTables, TableError } from "@/lib/imports/tables";
@@ -25,7 +25,8 @@ type Plan = Awaited<ReturnType<typeof previewImport>>;
 type Loaded = { source: ImportSource; fileName: string; txns: ImportTxn[]; skipped: Skipped[]; cas?: CasResult };
 
 function ImportPage() {
-  const [kind, setKind] = useState<"registrar" | "cas">("registrar");
+  const { me } = Route.useRouteContext();
+  const [kind, setKind] = useState<"registrar" | "cas" | "old">("registrar");
   return (
     <div className="space-y-6">
       <PageHeader
@@ -38,6 +39,7 @@ function ImportPage() {
           [
             ["registrar", "Registrar report", FileSpreadsheet],
             ["cas", "Client CAS (PDF)", FileText],
+            ...(me.role === "owner" ? ([["old", "Old FundVault app", History]] as const) : []),
           ] as const
         ).map(([k, label, Icon]) => (
           <button
@@ -54,7 +56,7 @@ function ImportPage() {
           </button>
         ))}
       </div>
-      {kind === "registrar" ? <RegistrarImport key="r" /> : <CasImport key="c" />}
+      {kind === "registrar" ? <RegistrarImport key="r" /> : kind === "cas" ? <CasImport key="c" /> : <OldAppImport key="o" />}
     </div>
   );
 }
@@ -65,12 +67,26 @@ function errorText(e: unknown): string {
   return SOMETHING_WRONG;
 }
 
-function FilePicker({ accept, label, hint, onFile }: { accept: string; label: string; hint: string; onFile: (f: File | null) => void }) {
+function FilePicker({
+  accept,
+  label,
+  hint,
+  onFile,
+  multiple = false,
+  onFiles,
+}: {
+  accept: string;
+  label: string;
+  hint: string;
+  onFile: (f: File | null) => void;
+  multiple?: boolean;
+  onFiles?: (files: FileList | null) => void;
+}) {
   return (
     <label className="block cursor-pointer rounded-2xl border border-dashed border-line bg-card/60 px-6 py-8 text-center transition-colors hover:border-bronze hover:bg-card">
       <span className="block text-[15px] font-semibold">{label}</span>
       <span className="mt-1 block text-[13px] text-muted">{hint}</span>
-      <input type="file" accept={accept} className="mt-4 block w-full text-[14px] file:mr-3 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-primary-fg" onChange={(e) => onFile(e.target.files?.[0] ?? null)} />
+      <input type="file" accept={accept} className="mt-4 block w-full text-[14px] file:mr-3 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-primary-fg" multiple={multiple} onChange={(e) => (onFiles ? onFiles(e.target.files) : onFile(e.target.files?.[0] ?? null))} />
     </label>
   );
 }
@@ -424,6 +440,172 @@ function Figure({ label, value }: { label: string; value: number }) {
     <div className="rounded-xl bg-soft/60 px-4 py-3">
       <dt className="eyebrow text-muted">{label}</dt>
       <dd className="mt-1 font-serif text-[1.75rem] leading-none">{value}</dd>
+    </div>
+  );
+}
+
+// ── The old FundVault app ─────────────────────────────────────────────────────
+
+type OldFiles = { clients?: { name: string; text: string }; investments?: { name: string; text: string }; sips?: { name: string; text: string } };
+type OldResult = Awaited<ReturnType<typeof importOldApp>>;
+
+/** Which table a CSV export is, by its columns (file names from the export vary). */
+function tableOf(text: string): keyof OldFiles | null {
+  const header = text.replace(/^\uFEFF/, "").split(/\r?\n/, 1)[0]!.toLowerCase().split(",").map((h) => h.replace(/"/g, "").trim());
+  if (header.includes("client_id") && header.includes("start_date")) return "sips";
+  if (header.includes("client_id") && header.includes("date")) return "investments";
+  if (header.includes("name") && (header.includes("pan") || header.includes("mobile"))) return "clients";
+  return null;
+}
+
+function OldAppImport() {
+  const [files, setFiles] = useState<OldFiles>({});
+  const [unknown, setUnknown] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<OldResult | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function choose(list: FileList | null) {
+    setResult(null);
+    setSaved(false);
+    setError(null);
+    const next: OldFiles = { ...files };
+    const odd: string[] = [];
+    for (const f of Array.from(list ?? [])) {
+      const text = await f.text();
+      const t = tableOf(text);
+      if (t) next[t] = { name: f.name, text };
+      else odd.push(f.name);
+    }
+    setFiles(next);
+    setUnknown(odd);
+  }
+
+  async function run(dryRun: boolean) {
+    if (!files.clients) return setError("Choose at least the clients file.");
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await importOldApp({ data: { clients: files.clients.text, investments: files.investments?.text ?? "", sips: files.sips?.text ?? "", dryRun } });
+      if (!r.ok) setError(r.error);
+      else {
+        setResult(r);
+        setSaved(!dryRun);
+      }
+    } catch {
+      setError(SOMETHING_WRONG);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const slots: [keyof OldFiles, string][] = [
+    ["clients", "Clients"],
+    ["investments", "Investments"],
+    ["sips", "SIPs"],
+  ];
+  const report = result?.ok ? result.report : null;
+  return (
+    <div className="space-y-5">
+      <Card className="space-y-4">
+        <div>
+          <h2 className="text-[17px] font-semibold">Bring over the old FundVault app's data</h2>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-[14px] text-muted">
+            <li>In the old app's Lovable project, open Cloud → Database.</li>
+            <li>Export the <b className="font-medium text-text">clients</b>, <b className="font-medium text-text">investments</b> and <b className="font-medium text-text">sips</b> tables as CSV.</li>
+            <li>Choose all three files below. Nothing is saved until you press Import, and running it again never doubles anything.</li>
+          </ol>
+        </div>
+        <FilePicker accept=".csv,text/csv" label="Choose the three CSV files" hint="Select them together, or one at a time." onFile={() => {}} multiple onFiles={(l) => void choose(l)} />
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {slots.map(([k, label]) => (
+            <li key={k} className={clsx("flex items-center gap-2 rounded-xl px-3 py-2 text-[14px]", files[k] ? "bg-good-soft text-good" : "bg-soft text-muted")}>
+              {files[k] ? <Check size={16} /> : <X size={16} />}
+              <span className="min-w-0 truncate">
+                <b className="font-medium">{label}</b> {files[k] ? `· ${files[k]!.name}` : "· not chosen"}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {unknown.length > 0 && <Notice tone="warn">Not a clients, investments or SIPs export: {unknown.join(", ")}.</Notice>}
+        {error && <Notice tone="error">{error}</Notice>}
+        {!saved && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant={report ? "secondary" : "primary"} disabled={busy || !files.clients} onClick={() => void run(true)}>
+              {busy && !report ? "Checking…" : "Check (saves nothing)"}
+            </Button>
+            {report && (
+              <Button disabled={busy} onClick={() => void run(false)}>
+                {busy ? "Importing…" : "Import into Folio"}
+              </Button>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {report && result?.ok && (
+        <Card className="space-y-4">
+          <div>
+            <p className="eyebrow text-bronze">{saved ? "Imported" : "What will be imported"}</p>
+            <h2 className="mt-1 font-serif text-[1.75rem] leading-tight">
+              {report.clients.imported} clients, {report.investments.imported} investments, {report.sips.imported} SIPs
+            </h2>
+            {report.clients.skippedSamples > 0 && <p className="text-[13px] text-muted">
+                The old app's {report.clients.skippedSamples === 1 ? "built-in sample client is" : `${report.clients.skippedSamples} built-in sample clients are`} left out.
+              </p>}
+          </div>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <Compare label="Total invested" before={money(report.totals.oldInvested)} after={money(report.totals.newInvested)} same={Math.abs(report.totals.oldInvested - report.totals.newInvested) < 0.01} />
+            <Compare label="Active SIPs" before={String(report.totals.oldActiveSips)} after={String(report.totals.newActiveSips)} same={report.totals.oldActiveSips === report.totals.newActiveSips} />
+          </dl>
+          {result.totalsMatch ? (
+            <Notice tone="good">The totals match the old app.</Notice>
+          ) : (
+            <Notice tone="warn">The totals differ from the old app. Check the rows below before relying on the data.</Notice>
+          )}
+          {[...report.investments.skipped, ...report.sips.skipped].length > 0 && (
+            <details className="rounded-xl bg-soft/60 px-4 py-3 text-[14px]">
+              <summary className="cursor-pointer font-medium">{report.investments.skipped.length + report.sips.skipped.length} rows left out</summary>
+              <ul className="mt-2 space-y-1 text-[13px] text-muted">
+                {[...report.investments.skipped, ...report.sips.skipped].slice(0, 50).map((s) => (
+                  <li key={s}>{s}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+          {saved && (
+            <Notice tone="good">
+              Done. Scheme names that exactly match an AMFI scheme were linked, so their value shows now; match the rest under{" "}
+              <Link to="/app/schemes" className="link-draw font-medium">
+                Match schemes
+              </Link>
+              . Then import his CAMS and KFintech reports: their exact records replace the typed entries.{" "}
+              <Link to="/app/clients" className="link-draw font-medium">
+                See the clients
+              </Link>
+              .
+            </Notice>
+          )}
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function Compare({ label, before, after, same }: { label: string; before: string; after: string; same: boolean }) {
+  return (
+    <div className="rounded-xl bg-soft/60 px-4 py-3">
+      <dt className="eyebrow text-muted">{label}</dt>
+      <dd className="mt-1 flex flex-wrap items-baseline gap-x-3 text-[15px]">
+        <span>
+          Old app <b className="font-serif text-[1.375rem] font-normal">{before}</b>
+        </span>
+        <span>
+          Folio <b className="font-serif text-[1.375rem] font-normal">{after}</b>
+        </span>
+        <span className={same ? "text-good" : "text-bad"}>{same ? "same" : "differs"}</span>
+      </dd>
     </div>
   );
 }

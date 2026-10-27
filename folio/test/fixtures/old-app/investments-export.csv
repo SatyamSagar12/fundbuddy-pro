@@ -1,0 +1,5 @@
+id,client_id,scheme,type,amount,date,payment_mode,transaction_id,created_at
+bbbbbbbb-0000-0000-0000-000000000101,aaaaaaaa-0000-0000-0000-000000000101,HDFC Flexi Cap Fund,One-time,150000,2026-01-15,Online,TXN1,2026-08-20
+bbbbbbbb-0000-0000-0000-000000000102,aaaaaaaa-0000-0000-0000-000000000101,Parag Parikh Flexi Cap Fund,SIP,5000,2026-02-05,Cheque,,2026-08-20
+bbbbbbbb-0000-0000-0000-000000000103,aaaaaaaa-0000-0000-0000-000000000102,Old Typed Scheme Name,One-time,25000.50,2026-03-10,Online,,2026-08-21
+bbbbbbbb-0000-0000-0000-000000000104,11111111-1111-1111-1111-111111111111,HDFC Flexi Cap Fund,One-time,99,2026-02-05,Online,,2026-08-20

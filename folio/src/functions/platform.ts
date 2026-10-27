@@ -177,6 +177,16 @@ export const setPracticeStatus = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Free of charge (e.g. your own family's practice): never billed, never locked. */
+export const setBillingExempt = createServerFn({ method: "POST" })
+  .validator((input: unknown) => practiceInput.extend({ exempt: z.boolean() }).parse(input))
+  .handler(async ({ data }) => {
+    const admin = await requirePlatformAdmin();
+    await db().update(practices).set({ billingExempt: data.exempt }).where(eq(practices.id, data.practiceId));
+    await audit(data.practiceId, null, data.exempt ? "platform.billing_exempt_on" : "platform.billing_exempt_off", { meta: { admin: admin.email } });
+    return { ok: true as const };
+  });
+
 /**
  * For someone who lost their phone AND their recovery codes. Check who they are first (call the number
  * you know, not one in the email). They set up a new authenticator at their next sign-in.
