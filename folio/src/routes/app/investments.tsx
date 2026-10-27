@@ -29,6 +29,7 @@ function InvestmentsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
+  const { me } = Route.useRouteContext();
   const [editing, setEditing] = useState<Row | "new" | null>(search.add ? "new" : null);
   const [msg, setMsg] = useState<{ tone: "good" | "error"; text: string } | null>(null);
 
@@ -48,6 +49,11 @@ function InvestmentsPage() {
         subtitle={`${rows.length} ${rows.length === 1 ? "entry" : "entries"} · ${money(total)} net`}
         action={
           <div className="flex flex-wrap gap-2">
+            {me.role !== "subbroker" && (
+              <Link to="/app/import" className={linkButtonSecondary}>
+                Import
+              </Link>
+            )}
             {rows.some((r) => !r.instrumentId) && (
               <Link to="/app/schemes" className={linkButtonSecondary}>
                 Match schemes

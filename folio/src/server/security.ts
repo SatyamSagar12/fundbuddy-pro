@@ -67,7 +67,12 @@ export async function recoveryCodesLeft(userId: string): Promise<number> {
 }
 
 export function clientIp(): string {
-  return getRequestHeader("cf-connecting-ip") ?? "local";
+  try {
+    return getRequestHeader("cf-connecting-ip") ?? "local";
+  } catch {
+    // Outside a web request (scripts, tests).
+    return "local";
+  }
 }
 
 /** Appends to the audit log as the owner role (works for account events without a practice too). */

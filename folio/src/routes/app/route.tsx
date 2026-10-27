@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { BarChart3, Home, LogOut, Repeat, Settings, Users, Wallet } from "lucide-react";
+import { BarChart3, Home, LogOut, Repeat, Settings, Upload, Users, Wallet } from "lucide-react";
 import { getMe, logout } from "@/functions/auth";
 import { BrandMark } from "@/components/brand";
 import { MotionSettle, NavigationProgress } from "@/components/motion";
@@ -25,6 +25,7 @@ const NAV = [
   { to: "/app/investments", label: "Investments", icon: Wallet, exact: false, mobile: true },
   { to: "/app/sips", label: "SIPs", icon: Repeat, exact: false, mobile: true },
   { to: "/app/reports", label: "Reports", icon: BarChart3, exact: false, mobile: true },
+  { to: "/app/import", label: "Import", icon: Upload, exact: false, mobile: false },
   { to: "/app/settings", label: "Settings", icon: Settings, exact: false, mobile: false },
 ] as const;
 
@@ -59,7 +60,7 @@ function AppLayout() {
         </div>
         <p className="eyebrow px-5 pt-2 pb-1 text-[#a9b0a5]/70">Practice</p>
         <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 py-2">
-          {NAV.map((n) => (
+          {NAV.filter((n) => n.to !== "/app/import" || me.role !== "subbroker").map((n) => (
             <Link
               key={n.to}
               to={n.to}

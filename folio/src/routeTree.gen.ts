@@ -21,6 +21,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppImportRouteImport } from './routes/app/import'
 import { Route as AppInvestmentsRouteImport } from './routes/app/investments'
 import { Route as AppReportsRouteImport } from './routes/app/reports'
 import { Route as AppSchemesRouteImport } from './routes/app/schemes'
@@ -98,6 +99,11 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppImportRoute = AppImportRouteImport.update({
+  id: '/import',
+  path: '/import',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppInvestmentsRoute = AppInvestmentsRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/settings': typeof AppSettingsRouteRouteWithChildren
+  '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schemes': typeof AppSchemesRoute
@@ -234,6 +241,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schemes': typeof AppSchemesRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/settings': typeof AppSettingsRouteRouteWithChildren
+  '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schemes': typeof AppSchemesRoute
@@ -301,6 +310,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify-email'
     | '/app/settings'
+    | '/app/import'
     | '/app/investments'
     | '/app/reports'
     | '/app/schemes'
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/verify-email'
+    | '/app/import'
     | '/app/investments'
     | '/app/reports'
     | '/app/schemes'
@@ -363,6 +374,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify-email'
     | '/app/settings'
+    | '/app/import'
     | '/app/investments'
     | '/app/reports'
     | '/app/schemes'
@@ -486,6 +498,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/import': {
+      id: '/app/import'
+      path: '/import'
+      fullPath: '/app/import'
+      preLoaderRoute: typeof AppImportRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/investments': {
@@ -636,6 +655,7 @@ const AppSettingsRouteRouteWithChildren =
 
 interface AppRouteRouteChildren {
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
+  AppImportRoute: typeof AppImportRoute
   AppInvestmentsRoute: typeof AppInvestmentsRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSchemesRoute: typeof AppSchemesRoute
@@ -649,6 +669,7 @@ interface AppRouteRouteChildren {
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
+  AppImportRoute: AppImportRoute,
   AppInvestmentsRoute: AppInvestmentsRoute,
   AppReportsRoute: AppReportsRoute,
   AppSchemesRoute: AppSchemesRoute,

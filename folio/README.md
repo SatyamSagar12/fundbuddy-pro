@@ -1,7 +1,7 @@
 # Anqulas Folio
 
 Back office for mutual fund distributors: clients, families, folios, SIPs, daily AMFI NAVs with current value,
-gains and XIRR, and, next, automatic CAMS/KFintech mailback import. Product plan: [`../docs/SAAS-PLAN.md`](../docs/SAAS-PLAN.md).
+gains and XIRR, and CAMS / KFintech / CAS imports. Product plan: [`../docs/SAAS-PLAN.md`](../docs/SAAS-PLAN.md).
 
 This folder is a separate app from the old FundVault Lite app at the repo root. The root app keeps serving your
 father until the switch-over. Changes here never rebuild or redeploy it: the old workflows ignore `folio/**`.
@@ -98,7 +98,7 @@ Not in phase 1:
 - PhonePe or PayPal checkout (manual UPI only for now).
 - GST invoices (decide GST with your CA first).
 
-## Phase 2 so far: NAVs and valuation
+## Phase 2 (complete): NAVs, valuation and registrar imports
 
 - **Daily NAVs.** Every scheme's name, codes, category and latest NAV come from AMFI's daily file
   (`NAVAll.txt`, about 15,000 schemes). Only changed rows are written.
@@ -125,14 +125,35 @@ Not in phase 1:
   - On Home: total current value and gain. On Clients: each client's value. On a client's page: a holdings
     table, with unmatched schemes listed at their invested amount.
 
-Still to come in phase 2: CAMS and KFintech mailback files, and CAS PDF import. These need sample files to build
-against.
+- **Registrar reports** (Import, owners and staff).
+  - Accepts CAMS and KFintech transaction reports as mailed: password ZIP, DBF, CSV/TXT or Excel (.xlsx). Old
+    .xls files must be saved as .xlsx first.
+  - Columns are found by any of their known names, so report versions with renamed or reordered columns still
+    read. A report missing a needed column is refused, naming what's missing.
+  - Taxes, stamp duty, rejected rows and detail changes are left out, and listed.
+- **Client CAS** (Import → Client CAS): the detailed CAS PDF from CAMS or KFintech, opened with its password.
+  - Every scheme is checked: opening balance + each row's units must equal the closing balance. A scheme that
+    doesn't add up is left out and named.
+  - Folios held through another ARN, or direct, are marked as held elsewhere.
+- **Privacy.** Files are opened in the browser (`src/lib/imports`). ZIP and PDF passwords never reach the server;
+  only the transactions do.
+- **Before saving**, a preview shows what will happen to each row:
+  - **Client:** the one chosen, else found by PAN, else by folio, else by an exact name when only one client has
+    it, else a new client (PAN encrypted as usual).
+  - **Scheme:** found by ISIN, else by an exact name; anything left goes to Match schemes.
+  - **Already in:** a file sent twice, or a CAS overlapping a CAMS report, adds nothing again.
+  - **Replaces typed entries:** an entry typed by hand with the same client, direction and scheme, an amount
+    within ₹1 and a date within 5 days is replaced by the registrar's, which has exact units.
+
+Built against the published layouts and the open-source casparser project's reading of CAS statements, and
+tested on made-up files (`test/fixtures/imports`). Real files will show what still needs adjusting.
 
 Local NAV data without internet:
 
 ```sh
 npx tsx scripts/nav-import.ts --file <a NAVAll.txt> --synthetic-history   # made-up history, local database only
-npx tsx scripts/e2e-nav.ts                                                # browser test of phase 2
+npx tsx scripts/e2e-nav.ts                                                # browser test: NAVs and valuation
+npx tsx scripts/e2e-import.ts                                             # browser test: registrar and CAS imports
 ```
 
 ## Look and feel
