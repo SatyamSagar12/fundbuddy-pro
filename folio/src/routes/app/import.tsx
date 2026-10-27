@@ -11,6 +11,7 @@ import { readFeed } from "@/lib/imports/feed";
 import { casTransactions, parseCas, type CasResult } from "@/lib/imports/cas";
 import type { ImportSource, ImportTxn, Skipped } from "@/lib/imports/normalise";
 import { SOMETHING_WRONG } from "@/lib/errors";
+import { CONSOLE_EXPORT, OldAppError, readOldTable, signInOldApp, toCsv } from "@/lib/imports/old-app";
 
 export const Route = createFileRoute("/app/import")({
   beforeLoad: ({ context }) => {
@@ -500,6 +501,34 @@ function OldAppImport() {
     }
   }
 
+  const [oldEmail, setOldEmail] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  /** Straight from the old app's database, with his old-app sign-in. */
+  async function fetchFromOldApp() {
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    setSaved(false);
+    try {
+      const token = await signInOldApp(oldEmail, oldPassword);
+      const [c, i, sp] = await Promise.all([readOldTable("clients", token), readOldTable("investments", token), readOldTable("sips", token)]);
+      if (!c.length) {
+        setError("The old app returned no clients for this account. Is it the account the data was entered with?");
+        return;
+      }
+      const label = "from the old app";
+      setFiles({ clients: { name: `${c.length} rows ${label}`, text: toCsv(c) }, investments: { name: `${i.length} rows ${label}`, text: toCsv(i) }, sips: { name: `${sp.length} rows ${label}`, text: toCsv(sp) } });
+      setUnknown([]);
+      setOldPassword("");
+    } catch (e) {
+      setError(e instanceof OldAppError ? e.message : "Couldn't reach the old app. Check the internet connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const slots: [keyof OldFiles, string][] = [
     ["clients", "Clients"],
     ["investments", "Investments"],
@@ -511,12 +540,58 @@ function OldAppImport() {
       <Card className="space-y-4">
         <div>
           <h2 className="text-[17px] font-semibold">Bring over the old FundVault app's data</h2>
-          <ol className="mt-2 list-decimal space-y-1 pl-5 text-[14px] text-muted">
-            <li>In the old app's Lovable project, open Cloud → Database.</li>
-            <li>Export the <b className="font-medium text-text">clients</b>, <b className="font-medium text-text">investments</b> and <b className="font-medium text-text">sips</b> tables as CSV.</li>
-            <li>Choose all three files below. Nothing is saved until you press Import, and running it again never doubles anything.</li>
-          </ol>
+          <p className="mt-1 text-[14px] text-muted">
+            Nothing is saved until you press Import, and running it again never doubles anything. The old app isn't changed.
+          </p>
         </div>
+        <div className="space-y-3 rounded-xl bg-soft/60 p-4">
+          <p className="text-[15px] font-semibold">Easiest: sign in to the old app here</p>
+          <p className="text-[13px] text-muted">
+            With the email and password used in the old FundVault app. This browser reads his data from the old app directly; the password isn't kept.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div className="space-y-1.5">
+              <label htmlFor="old-email" className="block text-[14px] font-medium">
+                Old app email
+              </label>
+              <input id="old-email" type="email" autoComplete="off" value={oldEmail} onChange={(e) => setOldEmail(e.target.value)} className={inputClass} />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="old-password" className="block text-[14px] font-medium">
+                Old app password
+              </label>
+              <input id="old-password" type="password" autoComplete="off" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} className={inputClass} />
+            </div>
+            <Button disabled={busy || !oldEmail || !oldPassword} onClick={() => void fetchFromOldApp()}>
+              {busy ? "Reading…" : "Get his data"}
+            </Button>
+          </div>
+          <details className="text-[13px] text-muted">
+            <summary className="cursor-pointer font-medium text-text">He signs in to the old app with Google?</summary>
+            <ol className="mt-2 list-decimal space-y-1 pl-5">
+              <li>On a computer, open the old FundVault app and sign in as usual.</li>
+              <li>
+                Copy this export script:{" "}
+                <button
+                  type="button"
+                  className="link-draw font-medium text-bronze"
+                  onClick={() =>
+                    void navigator.clipboard.writeText(CONSOLE_EXPORT).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2500);
+                    })
+                  }
+                >
+                  {copied ? "Copied" : "Copy export script"}
+                </button>
+                . It only reads his data and downloads it.
+              </li>
+              <li>On the old app's page press F12 (or right-click → Inspect), open Console, paste and press Enter. If the browser asks, type "allow pasting" first.</li>
+              <li>Three files download: clients.csv, investments.csv, sips.csv. Choose them below.</li>
+            </ol>
+          </details>
+        </div>
+        <p className="text-center text-[13px] text-muted">or</p>
         <FilePicker accept=".csv,text/csv" label="Choose the three CSV files" hint="Select them together, or one at a time." onFile={() => {}} multiple onFiles={(l) => void choose(l)} />
         <ul className="grid gap-2 sm:grid-cols-3">
           {slots.map(([k, label]) => (

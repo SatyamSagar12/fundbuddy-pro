@@ -4,6 +4,8 @@
  */
 import { chromium, type Page } from "playwright";
 import postgres from "postgres";
+import { readFileSync } from "node:fs";
+import { OLD_APP_URL, CONSOLE_EXPORT } from "../src/lib/imports/old-app";
 
 const BASE = process.env["APP_URL"] ?? "http://localhost:3000";
 const sql = postgres(process.env["DATABASE_URL"] ?? "postgres://folio_owner:folio_owner@127.0.0.1:5432/folio", { onnotice: () => {} });
@@ -76,6 +78,66 @@ try {
   await p.getByText(/^Done\./).waitFor();
   const [{ t }] = (await sql`select count(*)::int as t from transactions x join memberships m on m.practice_id = x.practice_id join users u on u.id = m.user_id where u.email = ${EMAIL}`) as unknown as [{ t: number }];
   check(t === 3, `importing twice doesn't double anything (${t} investments)`);
+
+  // ── Straight from the old app (its database is stood in for by the test files) ──
+  const csvRows = (name: string) => {
+    const [head, ...lines] = readFileSync(`${FIX}${name}`, "utf8").trim().split("\n");
+    const cols = head!.split(",");
+    // The fixture rows have no quoted commas except the address; good enough for a stand-in.
+    return lines.map((l) => {
+      const cells = l.match(/("([^"]|"")*"|[^,]*)(,|$)/g)!.map((c) => c.replace(/,$/, "").replace(/^"|"$/g, "").replace(/""/g, '"'));
+      return Object.fromEntries(cols.map((c, i) => [c, cells[i] === "" ? null : cells[i]]));
+    });
+  };
+  const TABLES: Record<string, unknown[]> = { clients: csvRows("clients-export.csv"), investments: csvRows("investments-export.csv"), sips: csvRows("sips-export.csv") };
+  let tokenSeen = "";
+  const fakeOldApp = async (route: import("playwright").Route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/auth/v1/token") {
+      const body = JSON.parse(route.request().postData() ?? "{}");
+      if (body.password !== "old-app-pass") return route.fulfill({ status: 400, json: { error: "invalid_grant" } });
+      return route.fulfill({ json: { access_token: "test-token" } });
+    }
+    tokenSeen = route.request().headers()["authorization"] ?? "";
+    const table = url.pathname.split("/").pop()!;
+    return route.fulfill({ json: TABLES[table] ?? [] });
+  };
+  await p.context().route(`${OLD_APP_URL}/**`, fakeOldApp);
+  await sql`delete from transactions where practice_id = (select m.practice_id from memberships m join users u on u.id = m.user_id where u.email = ${EMAIL})`;
+  await sql`delete from sips where practice_id = (select m.practice_id from memberships m join users u on u.id = m.user_id where u.email = ${EMAIL})`;
+  await sql`delete from investors where practice_id = (select m.practice_id from memberships m join users u on u.id = m.user_id where u.email = ${EMAIL})`;
+  await go(p, "/app/import");
+  await p.getByRole("tab", { name: "Old FundVault app" }).click();
+  await p.getByLabel("Old app email").fill("father@example.com");
+  await p.getByLabel("Old app password").fill("wrong");
+  await p.getByRole("button", { name: "Get his data" }).click();
+  await p.getByText("The old app didn't accept that email and password").waitFor();
+  check(true, "a wrong old-app password is refused");
+  await p.getByLabel("Old app password").fill("old-app-pass");
+  await p.getByRole("button", { name: "Get his data" }).click();
+  await p.getByText("3 rows from the old app").first().waitFor();
+  check(tokenSeen === "Bearer test-token", "tables are read with his old-app session");
+  await p.getByRole("button", { name: "Check (saves nothing)" }).click();
+  await p.getByText("The totals match the old app.").waitFor();
+  await p.getByRole("button", { name: "Import into Folio" }).click();
+  await p.getByText(/^Done\./).waitFor();
+  const [{ c }] = (await sql`select count(*)::int as c from investors i join memberships m on m.practice_id = i.practice_id join users u on u.id = m.user_id where u.email = ${EMAIL}`) as unknown as [{ c: number }];
+  check(c === 2, "imported straight from the old app");
+
+  // The Google-user fallback script: run on an old-app page with a session, it downloads the three files.
+  const oldContext = await b.newContext({ acceptDownloads: true });
+  await oldContext.route(`${OLD_APP_URL}/**`, fakeOldApp);
+  const old = await oldContext.newPage();
+  await old.route("https://old-app.test/", (r) => r.fulfill({ contentType: "text/html", body: "<html><body>old app</body></html>" }));
+  await old.goto("https://old-app.test/");
+  await old.evaluate(() => localStorage.setItem("sb-test-auth-token", JSON.stringify({ access_token: "test-token" })));
+  old.on("dialog", (d) => void d.accept());
+  const downloads: string[] = [];
+  old.on("download", (d) => downloads.push(d.suggestedFilename()));
+  await old.evaluate(CONSOLE_EXPORT);
+  await old.waitForTimeout(1500);
+  check(downloads.join(",") === "clients.csv,investments.csv,sips.csv", `the export script downloads the three files (${downloads.join(", ")})`);
+  await oldContext.close();
 
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join("; ")}` : ""}`);
 } finally {

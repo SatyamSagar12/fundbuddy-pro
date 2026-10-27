@@ -280,14 +280,17 @@ The GitHub job `.github/workflows/folio-publish.yml` does the same from GitHub A
 
 From the app, no secrets needed:
 
-1. **Export the old data.** In the old app's Lovable project → Cloud → Database, export the tables `clients`,
-   `investments` and `sips` as CSV.
+1. **Nothing to export by hand.** The Import page reads the old app's database itself (next steps).
 2. **Create his account.** Your father signs up at folio.anqulas.com with his own email.
 3. **Make his practice free of charge.** You (platform admin) open `/platform` → his practice → Manage →
    **Make free of charge**. Without this, his trial's client limit (750) still applies, and the trial ends after
    30 days.
-4. **Import.** Signed in as him: Import → **Old FundVault app** → choose the three CSV files → **Check (saves
-   nothing)**.
+4. **Import.** Signed in as him: Import → **Old FundVault app**.
+   - Enter his **old app** email and password → **Get his data**. The browser reads the clients, investments and
+     SIPs straight from the old app's database (`src/lib/imports/old-app.ts`); the password isn't kept.
+   - If he signs in to the old app with Google: open "He signs in with Google?" for a copy-paste script that
+     downloads the three CSV files from the old app's page, then choose those files.
+   - Then press **Check (saves nothing)**.
    - It shows what comes over and compares the total invested and the active SIPs with the old app.
    - When it says "The totals match the old app", press **Import into Folio**.
    - Running it again never doubles anything.
