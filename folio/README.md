@@ -65,7 +65,30 @@ father until the switch-over. Changes here never rebuild or redeploy it: the old
 - Per practice: extend the trial, record a payment made outside the app, suspend or restore.
 - Reset someone's authenticator.
 
-**Pages:** Home, Clients (search, "Handled by"), Settings (Practice, Team, Security, Billing).
+**Everyday screens (from the old FundVault app):**
+
+- **Clients:**
+  - add, edit and delete;
+  - a detail page with contact, PAN, bank and nominee details, the client's SIPs and investments, and totals;
+  - search, "Handled by", and CSV export.
+- **Investments:**
+  - add, edit and delete one-time, SIP and redemption entries, with payment mode and transaction ID;
+  - filter by client; CSV export.
+- **SIPs:**
+  - add, edit and delete (monthly or quarterly; active, paused or stopped);
+  - monthly commitment shown; CSV export.
+- **Reports:**
+  - monthly SIP vs one-time flow, SIP trend, Indian financial-year totals and top schemes;
+  - totals strip;
+  - client and period filters;
+  - a table view, and monthly or yearly CSV export.
+
+**Also:**
+
+- **Settings** (Practice, Team, Security, Billing).
+- **Google sign-in.** It appears once `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set; the redirect URI is
+  `<site>/auth/google/callback`.
+- **Install on a phone:** a manifest, icons and a service worker that caches nothing.
 
 **Import:** `scripts/import-fundvault.ts` brings in your father's data from the old app (below).
 
@@ -106,6 +129,7 @@ Checks:
 npm run typecheck
 npm test                              # encryption, codes, passwords, row-level security, import
 npx tsx scripts/e2e-auth.ts           # browser: sign-up and sign-in details (dev server running)
+npx tsx scripts/e2e-records.ts        # browser: clients, investments, SIPs, reports, CSV, install files
 npx tsx scripts/e2e.ts                # browser: all of phase 1 (needs PLATFORM_ADMIN_EMAILS=e2e.platform@example.com
                                       # and a UPI_ID in .dev.vars; deletes earlier e2e.* test accounts)
 ```

@@ -1,11 +1,13 @@
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { z } from "zod";
 import { listClients } from "@/functions/practice";
 import { assignClient, getTeam } from "@/functions/team";
-import { Card } from "@/components/ui";
+import { Card, linkButton, PageHeader } from "@/components/ui";
+import { Plus } from "lucide-react";
+import { downloadCsv } from "@/lib/csv";
 
-export const Route = createFileRoute("/app/clients")({
+export const Route = createFileRoute("/app/clients/")({
   validateSearch: z.object({ q: z.string().optional() }),
   loaderDeps: ({ search }) => ({ q: search.q }),
   loader: async ({ deps }) => {
@@ -27,10 +29,31 @@ function ClientsPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="text-[26px] font-semibold tracking-tight">Clients</h1>
-        <p className="text-muted">{clients.length} {q ? "found" : "clients"}</p>
-      </header>
+      <PageHeader
+        title="Clients"
+        subtitle={`${clients.length} ${q ? "found" : "clients"}`}
+        action={
+          <div className="flex gap-2">
+            {clients.length > 0 && (
+              <button
+                type="button"
+                className="min-h-11 rounded-lg border border-line bg-card px-4 text-[15px] font-semibold hover:border-bronze"
+                onClick={() =>
+                  void downloadCsv(
+                    "clients.csv",
+                    clients.map((c) => ({ Name: c.name, Mobile: c.mobile ?? "", Email: c.email ?? "", PAN: c.pan ?? "", ActiveSIPs: c.activeSips })),
+                  )
+                }
+              >
+                Export CSV
+              </button>
+            )}
+            <Link to="/app/clients/new" className={linkButton}>
+              <Plus size={18} /> Add client
+            </Link>
+          </div>
+        }
+      />
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -51,17 +74,19 @@ function ClientsPage() {
       </form>
       <Card className="!p-0">
         {clients.length === 0 ? (
-          <p className="p-8 text-center text-muted">{q ? "No client matches that." : "No clients yet."}</p>
+          <p className="p-8 text-center text-muted">
+            {q ? "No client matches that." : "No clients yet. Add your first client to get started."}
+          </p>
         ) : (
           <ul className="divide-y divide-line">
             {clients.map((c) => (
               <li key={c.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{c.name}</p>
+                <Link to="/app/clients/$clientId" params={{ clientId: c.id }} className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-text hover:underline">{c.name}</p>
                   <p className="truncate text-sm text-muted">
                     {[c.mobile, c.email, c.pan].filter(Boolean).join(" · ") || "No contact details"}
                   </p>
-                </div>
+                </Link>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="hidden text-sm text-muted sm:inline">
                     {c.activeSips > 0 ? `${c.activeSips} active SIP${c.activeSips > 1 ? "s" : ""}` : ""}

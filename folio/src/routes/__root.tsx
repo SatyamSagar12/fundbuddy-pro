@@ -10,12 +10,18 @@ export const Route = createRootRoute({
       { title: "Anqulas Folio" },
       { name: "description", content: "Back office for mutual fund distributors." },
       { name: "robots", content: "noindex" },
+      { name: "theme-color", content: "#1e2923" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Folio" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" },
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", type: "image/png", href: "/icons/favicon-32.png" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
   }),
   component: () => (
@@ -42,6 +48,12 @@ function Shell({ children }: { children: ReactNode }) {
       <body>
         {children}
         <Scripts />
+        <script
+          // Registers the service worker that makes the app installable (it caches nothing).
+          dangerouslySetInnerHTML={{
+            __html: `if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));`,
+          }}
+        />
       </body>
     </html>
   );

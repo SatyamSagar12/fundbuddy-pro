@@ -18,6 +18,7 @@ import { dummyPasswordHash, hashPassword, passwordProblem, verifyPassword } from
 import { newTotpSecret, otpauthUrl } from "@/server/totp";
 import { checkCode } from "@/server/two-factor";
 import { approveAdmins } from "@/server/maintenance";
+import { googleEnabled } from "@/server/google";
 import { billingFor } from "@/server/billing";
 import { createSession, endAllSessions, endSession, getSession, markMfaPassed } from "@/server/session";
 import { audit, clientIp, newRecoveryCodes, securityEmail, consumeRecoveryCode } from "@/server/security";
@@ -398,3 +399,6 @@ export const disableTotp = createServerFn({ method: "POST" })
     await securityEmail(s.email, s.name, "The authenticator app was turned off");
     return { ok: true };
   });
+
+/** Which sign-in options this site offers (Google appears once its keys are set). */
+export const getAuthOptions = createServerFn({ method: "GET" }).handler(async () => ({ google: googleEnabled() }));

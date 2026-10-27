@@ -10,7 +10,7 @@ export function day(value: string | Date | null | undefined, locale = "en-IN"): 
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  purchase: "Lump sum",
+  purchase: "One-time",
   sip: "SIP",
   redemption: "Redemption",
   switch_in: "Switch in",

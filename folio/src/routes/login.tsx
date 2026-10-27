@@ -1,17 +1,31 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { login, resendVerification } from "@/functions/auth";
+import { getAuthOptions, login, resendVerification } from "@/functions/auth";
+import { z } from "zod";
+import { GoogleButton } from "@/components/google-button";
 import { AuthFrame, Button, Field, Notice } from "@/components/ui";
 import { firstIssue, SOMETHING_WRONG } from "@/lib/errors";
 
+const GOOGLE_ERRORS: Record<string, string> = {
+  google_expired: "Google sign-in took too long or was interrupted. Please try again.",
+  google_failed: "Google sign-in didn't work. Please try again, or use your email and password.",
+  google_unverified: "That Google account's email isn't verified by Google.",
+  google_off: "Google sign-in isn't available.",
+  too_many: "Too many attempts. Wait 15 minutes.",
+};
+
 export const Route = createFileRoute("/login")({
+  validateSearch: z.object({ error: z.string().optional() }),
+  loader: () => getAuthOptions(),
   head: () => ({ meta: [{ title: "Sign in · Anqulas Folio" }] }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
+  const auth = Route.useLoaderData();
+  const { error: errorCode } = Route.useSearch();
+  const [error, setError] = useState<string | null>(errorCode ? (GOOGLE_ERRORS[errorCode] ?? SOMETHING_WRONG) : null);
   const [info, setInfo] = useState<string | null>(null);
   // Uncontrolled: text typed before the page finishes loading must not be wiped.
   const emailRef = useRef<HTMLInputElement>(null);
@@ -57,6 +71,7 @@ function LoginPage() {
         <Button type="submit" disabled={busy} className="w-full">
           {busy ? "Signing in…" : "Sign in"}
         </Button>
+        {auth.google && <GoogleButton />}
         <p className="text-center text-[15px]">
           <Link to="/forgot-password" className="font-semibold text-bronze underline">
             Forgot password?
@@ -77,3 +92,4 @@ function LoginPage() {
     </AuthFrame>
   );
 }
+

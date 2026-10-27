@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
-import { Home, LogOut, Settings, Users } from "lucide-react";
+import { BarChart3, Home, LogOut, Repeat, Settings, Users, Wallet } from "lucide-react";
 import { getMe, logout } from "@/functions/auth";
 
 export const Route = createFileRoute("/app")({
@@ -17,9 +17,12 @@ export const Route = createFileRoute("/app")({
 });
 
 const NAV = [
-  { to: "/app", label: "Home", icon: Home, exact: true },
-  { to: "/app/clients", label: "Clients", icon: Users, exact: false },
-  { to: "/app/settings", label: "Settings", icon: Settings, exact: false },
+  { to: "/app", label: "Home", icon: Home, exact: true, mobile: true },
+  { to: "/app/clients", label: "Clients", icon: Users, exact: false, mobile: true },
+  { to: "/app/investments", label: "Investments", icon: Wallet, exact: false, mobile: true },
+  { to: "/app/sips", label: "SIPs", icon: Repeat, exact: false, mobile: true },
+  { to: "/app/reports", label: "Reports", icon: BarChart3, exact: false, mobile: true },
+  { to: "/app/settings", label: "Settings", icon: Settings, exact: false, mobile: false },
 ] as const;
 
 function AppLayout() {
@@ -63,9 +66,14 @@ function AppLayout() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-bronze-light">Anqulas Folio</p>
           <p className="truncate text-[15px] font-semibold">{me.practiceName}</p>
         </div>
-        <button onClick={signOut} aria-label="Sign out" className="p-2 text-paper/80">
-          <LogOut size={20} />
-        </button>
+        <div className="flex items-center">
+          <Link to="/app/settings" aria-label="Settings" className="p-2 text-paper/80">
+            <Settings size={20} />
+          </Link>
+          <button onClick={signOut} aria-label="Sign out" className="p-2 text-paper/80">
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-28 sm:px-8 lg:pb-12">
@@ -73,13 +81,13 @@ function AppLayout() {
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-3 border-t border-line bg-card lg:hidden">
-        {NAV.map((n) => (
+      <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-line bg-card lg:hidden">
+        {NAV.filter((n) => n.mobile).map((n) => (
           <Link
             key={n.to}
             to={n.to}
             activeOptions={{ exact: n.exact }}
-            className="flex flex-col items-center gap-0.5 py-2.5 text-[12px] font-semibold text-muted"
+            className="flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold text-muted"
             activeProps={{ className: "!text-ink" }}
           >
             <n.icon size={22} />

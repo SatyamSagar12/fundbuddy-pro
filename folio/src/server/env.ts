@@ -15,6 +15,9 @@ export type AppEnv = {
   /** Your UPI ID for plan payments (e.g. anqulas@okhdfcbank) and the name shown in the payer's UPI app. */
   UPI_ID?: string;
   UPI_PAYEE_NAME?: string;
+  /** Google sign-in (Google Cloud → APIs & Services → Credentials → OAuth client, type "Web application"). */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 };
 
 export function appEnv(): AppEnv {

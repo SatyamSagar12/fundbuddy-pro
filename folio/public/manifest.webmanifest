@@ -1,0 +1,17 @@
+{
+  "id": "/app",
+  "name": "Anqulas Folio",
+  "short_name": "Folio",
+  "description": "Back office for mutual fund distributors: clients, investments, SIPs and reports.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1e2923",
+  "theme_color": "#1e2923",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

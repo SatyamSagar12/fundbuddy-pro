@@ -88,3 +88,73 @@ export function AuthFrame({ title, subtitle, children }: { title: string; subtit
     </main>
   );
 }
+
+const fieldClass =
+  "block min-h-12 w-full rounded-lg border border-line bg-white px-3.5 text-[17px] outline-none transition-colors focus:border-bronze";
+
+export function SelectField({
+  label,
+  options,
+  error,
+  placeholder,
+  ...props
+}: ComponentPropsWithRef<"select"> & {
+  label: string;
+  options: readonly { value: string; label: string }[];
+  error?: string | undefined;
+  placeholder?: string;
+}) {
+  const id = props.id ?? props.name;
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="block text-[15px] font-semibold">
+        {label}
+      </label>
+      <select id={id} {...props} className={fieldClass}>
+        {placeholder !== undefined && <option value="">{placeholder}</option>}
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {error && <p className="text-sm text-bad">{error}</p>}
+    </div>
+  );
+}
+
+export function TextAreaField({
+  label,
+  error,
+  ...props
+}: ComponentPropsWithRef<"textarea"> & { label: string; error?: string | undefined }) {
+  const id = props.id ?? props.name;
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="block text-[15px] font-semibold">
+        {label}
+      </label>
+      <textarea id={id} rows={3} {...props} className={`${fieldClass} py-2.5`} />
+      {error && <p className="text-sm text-bad">{error}</p>}
+    </div>
+  );
+}
+
+/** Page title row with an optional action on the right. */
+export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: ReactNode; action?: ReactNode }) {
+  return (
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="text-[26px] font-semibold tracking-tight">{title}</h1>
+        {subtitle && <p className="text-muted">{subtitle}</p>}
+      </div>
+      {action}
+    </header>
+  );
+}
+
+/** Styled like a primary button, for navigation links. */
+export const linkButton =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink px-5 text-[15px] font-semibold text-paper hover:bg-ink-2";
+export const linkButtonSecondary =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-card px-5 text-[15px] font-semibold text-text hover:border-bronze";

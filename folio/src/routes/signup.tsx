@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { signup } from "@/functions/auth";
+import { getAuthOptions, signup } from "@/functions/auth";
+import { GoogleButton } from "@/components/google-button";
 import { AuthFrame, Button, Field, Notice } from "@/components/ui";
 import { firstIssue, SOMETHING_WRONG } from "@/lib/errors";
 
 export const Route = createFileRoute("/signup")({
+  loader: () => getAuthOptions(),
   head: () => ({ meta: [{ title: "Start your free trial · Anqulas Folio" }] }),
   component: SignupPage,
 });
 
 function SignupPage() {
+  const auth = Route.useLoaderData();
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [awaitingApproval, setAwaitingApproval] = useState(false);
@@ -104,6 +107,7 @@ function SignupPage() {
         <Button type="submit" disabled={busy} className="w-full">
           {busy ? "Creating…" : "Create account"}
         </Button>
+        {auth.google && <GoogleButton />}
         <p className="text-center text-[15px] text-muted">
           Already have an account?{" "}
           <Link to="/login" className="font-semibold text-bronze underline">
@@ -114,3 +118,4 @@ function SignupPage() {
     </AuthFrame>
   );
 }
+
