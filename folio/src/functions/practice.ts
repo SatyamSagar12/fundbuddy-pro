@@ -4,7 +4,7 @@ import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import { withPractice } from "@/server/db/scope";
-import { auditLog, families, investors, practices, sips, transactions } from "@/server/db/schema";
+import { auditLog, families, investors, practices, sips, transactions, users } from "@/server/db/schema";
 import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
@@ -102,6 +102,7 @@ export const getPractice = createServerFn({ method: "GET" }).handler(async () =>
       plan: practices.plan,
       trialEndsAt: practices.trialEndsAt,
       billingExempt: practices.billingExempt,
+      requireTotp: practices.requireTotp,
     })
     .from(practices)
     .where(eq(practices.id, m.practiceId));
@@ -123,14 +124,26 @@ export const updatePractice = createServerFn({ method: "POST" })
           .trim()
           .toUpperCase()
           .regex(/^(E\d{6})?$/, "EUIN looks like E123456."),
+        requireTotp: z.boolean(),
       })
       .parse(input),
   )
   .handler(async ({ data }) => {
     const m = await requireMember(["owner"]);
+    if (data.requireTotp) {
+      const [me] = await db().select({ on: users.totpEnabledAt }).from(users).where(eq(users.id, m.userId));
+      if (!me?.on) {
+        return { ok: false as const, error: "Turn on your own authenticator first (Settings → Security), then require it for everyone." };
+      }
+    }
     await db()
       .update(practices)
-      .set({ name: data.name, arn: data.arn ? data.arn.replace(/^ARN-?/, "ARN-") : null, euin: data.euin || null })
+      .set({
+        name: data.name,
+        arn: data.arn ? data.arn.replace(/^ARN-?/, "ARN-") : null,
+        euin: data.euin || null,
+        requireTotp: data.requireTotp,
+      })
       .where(eq(practices.id, m.practiceId));
     await withPractice(m.practiceId, (tx) =>
       tx.insert(auditLog).values({ practiceId: m.practiceId, userId: m.userId, action: "practice.updated" }),

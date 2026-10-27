@@ -1,13 +1,19 @@
-/** The signed-in person's own sign-in security: recovery codes. */
+/** The signed-in person's own sign-in security: the optional authenticator and its recovery codes. */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireMember } from "@/server/member";
 import { audit, newRecoveryCodes, recoveryCodesLeft, securityEmail } from "@/server/security";
 import { checkCode } from "@/server/two-factor";
+import { getSession } from "@/server/session";
 
 export const getSecurity = createServerFn({ method: "GET" }).handler(async () => {
   const m = await requireMember(undefined, { allowLocked: true });
-  return { recoveryCodesLeft: await recoveryCodesLeft(m.userId) };
+  const s = await getSession();
+  return {
+    totpEnabled: s?.totpEnabled ?? false,
+    totpRequired: s?.totpRequired ?? false,
+    recoveryCodesLeft: await recoveryCodesLeft(m.userId),
+  };
 });
 
 /** New recovery codes replace the old ones. Needs a current authenticator code. */

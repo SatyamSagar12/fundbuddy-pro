@@ -1,0 +1,1 @@
+ALTER TABLE "practices" ADD COLUMN "require_totp" boolean DEFAULT false NOT NULL;

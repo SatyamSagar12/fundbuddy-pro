@@ -24,11 +24,21 @@ export type SessionInfo = {
   name: string;
   emailVerified: boolean;
   totpEnabled: boolean;
+  /** This session entered an authenticator code. */
+  codePassed: boolean;
+  /** The practice requires an authenticator app from everyone. */
+  totpRequired: boolean;
+  /**
+   * What the person must still do before seeing any data: enter a code (they have an authenticator), set one up
+   * (their practice requires it), or nothing. The authenticator itself is optional unless the practice requires it.
+   */
+  step: "code" | "setup" | null;
+  /** True when `step` is null: fully signed in. */
   mfaPassed: boolean;
   practiceId: string | null;
   practiceName: string | null;
   role: string | null;
-  /** When this session passed the authenticator step (sessions are re-created at that moment). */
+  /** When the session started, or passed the authenticator step (sessions are re-created at that moment). */
   createdAt: Date;
 };
 
@@ -77,6 +87,7 @@ export async function getSession(): Promise<SessionInfo | null> {
       practiceId: sessions.practiceId,
       practiceName: practices.name,
       practiceStatus: practices.status,
+      practiceRequireTotp: practices.requireTotp,
       role: memberships.role,
       memberActive: memberships.active,
     })
@@ -98,6 +109,9 @@ export async function getSession(): Promise<SessionInfo | null> {
   if (now.getTime() - row.lastSeenAt.getTime() > TOUCH_EVERY_MS) {
     await db().update(sessions).set({ lastSeenAt: now }).where(eq(sessions.id, id));
   }
+  const totpEnabled = row.totpEnabledAt !== null;
+  const totpRequired = practiceOk && row.practiceRequireTotp === true;
+  const step = totpEnabled ? (row.mfaPassed ? null : "code") : totpRequired ? "setup" : null;
   return {
     sessionId: row.sessionId,
     createdAt: row.createdAt,
@@ -105,8 +119,11 @@ export async function getSession(): Promise<SessionInfo | null> {
     email: row.email,
     name: row.name,
     emailVerified: row.emailVerifiedAt !== null,
-    totpEnabled: row.totpEnabledAt !== null,
-    mfaPassed: row.mfaPassed,
+    totpEnabled,
+    codePassed: row.mfaPassed,
+    totpRequired,
+    step,
+    mfaPassed: step === null,
     practiceId: practiceOk ? row.practiceId : null,
     practiceName: practiceOk ? row.practiceName : null,
     role: practiceOk ? row.role : null,

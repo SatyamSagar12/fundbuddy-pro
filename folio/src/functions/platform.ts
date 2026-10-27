@@ -183,7 +183,7 @@ export const resetUserAuthenticator = createServerFn({ method: "POST" })
     await sendMail({
       to: u.email,
       subject: "Security notice: your authenticator was reset",
-      text: `Hello ${u.name},\n\nAt your request, Anqulas Folio support removed the authenticator app from your account. Sign in at ${appEnv().APP_URL}/login and set up a new one.\n\nIf you didn't ask for this, reply to this email straight away.\n\nAnqulas Folio`,
+      text: `Hello ${u.name},\n\nAt your request, Anqulas Folio support removed the authenticator app from your account. Sign in at ${appEnv().APP_URL}/login with your password; you can set up a new one under Settings → Security.\n\nIf you didn't ask for this, reply to this email straight away.\n\nAnqulas Folio`,
     });
     return { ok: true as const };
   });

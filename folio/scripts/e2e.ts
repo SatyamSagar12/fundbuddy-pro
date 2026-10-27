@@ -4,7 +4,8 @@
  *
  *   npx tsx scripts/e2e.ts
  *
- * Covers: sign-up, email confirmation, authenticator + recovery codes, sign-in, password reset, lost phone,
+ * Covers: sign-up, email confirmation, password-only sign-in, turning the optional authenticator on, recovery
+ * codes, the owner requiring an authenticator for everyone, password reset, lost phone,
  * inviting a sub-broker who sees only their assigned clients, switching a member off, paying by UPI and the
  * platform admin confirming it, the lock after a lapsed plan, and basic protections.
  */
@@ -65,14 +66,23 @@ async function mailLink(page: Page, to: string, contains: string): Promise<strin
   return link;
 }
 
-async function signIn(page: Page, email: string, password: string, secret: string) {
+/** Signs in; with a secret, also enters the authenticator code. */
+async function signIn(page: Page, email: string, password: string, secret?: string) {
   await go(page, "/login");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
+  if (!secret) return;
   await waitForPath(page, "/two-factor");
   await page.getByLabel("6-digit code").fill(await freshCode(secret));
   await page.getByRole("button", { name: "Continue" }).click();
+}
+
+/** Turns the optional authenticator on from Settings → Security. */
+async function turnOnAuthenticator(page: Page) {
+  await go(page, "/app/settings/security");
+  await page.getByRole("link", { name: "Turn on" }).click();
+  return setUpAuthenticator(page);
 }
 
 /** Sets up the authenticator on the setup page; returns the secret and the recovery codes. */
@@ -105,7 +115,10 @@ async function signUp(browser: Browser, email: string, practice: string) {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  const auth = await setUpAuthenticator(page);
+  // The authenticator is optional: a new account goes straight to Home.
+  await waitForPath(page, "/app");
+  await page.getByText("Recommended:").waitFor();
+  const auth = await turnOnAuthenticator(page);
   return { page, ...auth };
 }
 
@@ -119,6 +132,7 @@ const browser = await chromium.launch();
 try {
   // ── Owner signs up ────────────────────────────────────────────────────────
   const owner = await signUp(browser, OWNER, "E2E Wealth");
+  check(true, "new account signs in with a password only and Home recommends an authenticator");
   check(owner.codes.length === 10 && /^[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(owner.codes[0]!), "10 recovery codes shown after authenticator setup");
   const [p] = await sql`select p.id from practices p join memberships m on m.practice_id = p.id join users u on u.id = m.user_id where u.email = ${OWNER}`;
   const practiceId = p!["id"] as string;
@@ -201,7 +215,8 @@ try {
   await sub.getByLabel("Email").fill(SUB);
   await sub.getByLabel("Password").fill(PASSWORD);
   await sub.getByRole("button", { name: "Sign in" }).click();
-  const subAuth = await setUpAuthenticator(sub);
+  await waitForPath(sub, "/app");
+  check(true, "invited member signs in with a password only");
   await go(sub, "/app/clients");
   await sub.getByText("No clients yet.").waitFor();
   check(true, "sub-broker sees no clients before any are assigned");
@@ -214,6 +229,19 @@ try {
   check(subClients.length === 1 && subClients[0]!.includes("Asha Client"), "after assignment the sub-broker sees exactly that client");
   await go(owner.page, "/app/clients");
   check((await owner.page.locator("main li").count()) === 2, "the owner still sees every client");
+
+  // The owner requires an authenticator for everyone: the sub-broker must set one up, with no "Not now".
+  await go(owner.page, "/app/settings");
+  await owner.page.getByLabel(/Require an authenticator app for everyone/).check();
+  await owner.page.getByRole("button", { name: "Save" }).click();
+  await owner.page.getByText("Saved.").waitFor();
+  await go(sub, "/app/clients");
+  await waitForPath(sub, "/two-factor/setup");
+  check((await sub.getByRole("link", { name: "Not now" }).count()) === 0, "once required, a member without an authenticator must set one up (no 'Not now')");
+  const subAuth = await setUpAuthenticator(sub);
+  await go(sub, "/app/settings/security");
+  await sub.getByText("Your practice requires it, so it can't be turned off.").waitFor();
+  check(true, "a required authenticator can't be turned off");
 
   await go(owner.page, "/app/settings/team");
   await owner.page.getByRole("button", { name: "Switch off" }).click();

@@ -61,7 +61,7 @@ What it takes from Docchase is **lessons, not code links**. Docchase has already
 Folio repeats the same designs, written fresh for Folio's stack:
 
 - Database-enforced separation between customers (row-level security)
-- Mandatory two-step sign-in and login lockouts
+- Two-step sign-in (optional per person, or required by the practice owner) and login lockouts
 - Prepaid plans with a UPI / PhonePe checkout, and a platform admin console
 - Append-only audit log
 - The security mistakes listed in Docchase's `docs/research/security-legal-cost-review.md`, avoided from day one
@@ -185,7 +185,7 @@ five-item menu **Home · Clients · SIPs · Reports · Settings**.
    Rules are kept in one versioned table, so a Budget change is a one-line update.
 9. **Staff and sub-brokers.** The owner sees everything; a sub-broker sees only their own clients,
    enforced by the database.
-10. **Security from day one.** Mandatory 2FA, encrypted PAN and bank details, audit log, database in India.
+10. **Security from day one.** Optional authenticator (owner can require it), encrypted PAN and bank details, audit log, database in India.
 
 ### v2 — the "wow" features (after 5–10 paying advisors)
 
@@ -374,7 +374,7 @@ Father's data migration:
 | Phase | Delivers | Rough size |
 |---|---|---|
 | 0 | Lock down current app (section 0) | 15 min, today |
-| 1 | Environment (Cloudflare Workers + Postgres in Mumbai + Hyperdrive + CI), sign-up, authenticator + recovery codes, password reset, practices + RLS, encryption, team and sub-brokers, UPI billing, platform console, father's data import. **Done**: see `folio/README.md` | 2 weeks |
+| 1 | Environment (Cloudflare Workers + Postgres in Mumbai + Hyperdrive + CI), sign-up, optional authenticator + recovery codes, password reset, practices + RLS, encryption, team and sub-brokers, UPI billing, platform console, father's data import. **Done**: see `folio/README.md` | 2 weeks |
 | 2 | Scheme master + daily NAV, valuation, XIRR; CAMS/KFintech file parsers (upload); CAS PDF import | 2 weeks |
 | 3 | Forwarding address + automatic ingest; SIP book; morning briefing (app + WhatsApp/email) | 1–2 weeks |
 | 4 | Branded PDF reports, monthly auto-statements, client portal (OTP), capital gains | 2 weeks |

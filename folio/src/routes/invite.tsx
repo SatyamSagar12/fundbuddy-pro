@@ -46,7 +46,7 @@ function InvitePage() {
   if (done) {
     return (
       <AuthFrame title="You've joined">
-        <p className="text-muted">Sign in now. You'll set up your authenticator app the first time.</p>
+        <p className="text-muted">You can sign in now.</p>
         <Link to="/login" className="mt-6 inline-flex font-semibold text-bronze underline">
           Sign in
         </Link>

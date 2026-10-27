@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { confirmTotpSetup, getMe, startTotpSetup } from "@/functions/auth";
 import { AuthFrame, Button, Field, Notice } from "@/components/ui";
@@ -9,7 +9,8 @@ export const Route = createFileRoute("/two-factor/setup")({
   beforeLoad: async () => {
     const me = await getMe();
     if (!me) throw redirect({ to: "/login" });
-    if (me.totpEnabled) throw redirect({ to: me.mfaPassed ? "/app" : "/two-factor" });
+    if (me.totpEnabled) throw redirect({ to: me.step === "code" ? "/two-factor" : "/app" });
+    return { required: me.step === "setup" };
   },
   head: () => ({ meta: [{ title: "Set up your authenticator · Anqulas Folio" }] }),
   component: SetupPage,
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/two-factor/setup")({
 
 function SetupPage() {
   const navigate = useNavigate();
+  const { required } = Route.useRouteContext();
   const [qr, setQr] = useState<{ qrSvg: string; secret: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,7 +50,11 @@ function SetupPage() {
   return (
     <AuthFrame
       title="Protect your account"
-      subtitle="Your clients' data needs a code from your phone as well as your password."
+      subtitle={
+        required
+          ? "Your practice requires a code from your phone as well as your password."
+          : "Optional, but recommended: a code from your phone as well as your password keeps your clients' data safe even if your password leaks."
+      }
     >
       <ol className="mb-5 list-decimal space-y-2 pl-5 text-[15px]">
         <li>
@@ -78,6 +84,13 @@ function SetupPage() {
         <Button type="submit" disabled={busy || !qr} className="w-full">
           {busy ? "Checking…" : "Turn on and continue"}
         </Button>
+        {!required && (
+          <p className="text-center text-[15px]">
+            <Link to="/app" className="font-semibold text-muted underline">
+              Not now
+            </Link>
+          </p>
+        )}
       </form>
     </AuthFrame>
   );

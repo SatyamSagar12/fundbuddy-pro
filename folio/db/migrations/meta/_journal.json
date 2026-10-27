@@ -29,6 +29,13 @@
       "when": 1793055196682,
       "tag": "0003_subbroker_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793077319470,
+      "tag": "0004_optional_authenticator",
+      "breakpoints": true
     }
   ]
 }

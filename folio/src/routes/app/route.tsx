@@ -6,7 +6,7 @@ export const Route = createFileRoute("/app")({
   beforeLoad: async ({ location }) => {
     const me = await getMe();
     if (!me) throw redirect({ to: "/login" });
-    if (!me.mfaPassed) throw redirect({ to: me.totpEnabled ? "/two-factor" : "/two-factor/setup" });
+    if (me.step) throw redirect({ to: me.step === "code" ? "/two-factor" : "/two-factor/setup" });
     if (!me.hasPractice) throw redirect({ to: "/no-access" });
     if (me.billing?.state === "locked" && location.pathname !== "/app/settings/billing") {
       throw redirect({ to: me.role === "owner" ? "/app/settings/billing" : "/locked" });

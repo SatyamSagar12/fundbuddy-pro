@@ -21,10 +21,15 @@ function SettingsPage() {
     setBusy(true);
     setMsg(null);
     try {
-      await updatePractice({
-        data: { name: String(f.get("name") ?? ""), arn: String(f.get("arn") ?? ""), euin: String(f.get("euin") ?? "") },
+      const res = await updatePractice({
+        data: {
+          name: String(f.get("name") ?? ""),
+          arn: String(f.get("arn") ?? ""),
+          euin: String(f.get("euin") ?? ""),
+          requireTotp: f.get("requireTotp") === "on",
+        },
       });
-      setMsg({ tone: "good", text: "Saved." });
+      setMsg(res.ok ? { tone: "good", text: "Saved." } : { tone: "error", text: res.error });
       await router.invalidate();
     } catch (err) {
       setMsg({ tone: "error", text: firstIssue(err) ?? SOMETHING_WRONG });
@@ -44,6 +49,16 @@ function SettingsPage() {
             <Field label="Practice name" name="name" defaultValue={p.name} required />
             <Field label="ARN" name="arn" defaultValue={p.arn ?? ""} placeholder="ARN-123456" />
             <Field label="EUIN" name="euin" defaultValue={p.euin ?? ""} placeholder="E123456" />
+            <label className="flex items-start gap-3 rounded-lg border border-line bg-white p-3 text-[15px]">
+              <input type="checkbox" name="requireTotp" defaultChecked={p.requireTotp} className="mt-1 h-4 w-4" />
+              <span>
+                <b>Require an authenticator app for everyone</b>
+                <span className="block text-muted">
+                  Each person then needs a code from their phone as well as their password. Recommended once your team
+                  handles many clients.
+                </span>
+              </span>
+            </label>
           </fieldset>
           {p.canEdit ? (
             <Button type="submit" disabled={busy}>

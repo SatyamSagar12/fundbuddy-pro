@@ -30,7 +30,7 @@ function VerifyPage() {
   if (state === "done") {
     return (
       <AuthFrame title="Email confirmed">
-        <p className="text-muted">Next, sign in and set up your authenticator app.</p>
+        <p className="text-muted">You can sign in now.</p>
         <Link to="/login" className="mt-6 inline-flex font-semibold text-bronze underline">
           Sign in
         </Link>

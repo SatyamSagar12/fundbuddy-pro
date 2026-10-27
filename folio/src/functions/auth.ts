@@ -190,13 +190,19 @@ export const login = createServerFn({ method: "POST" })
     }
     await db().update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id));
     const [membership] = await db()
-      .select({ practiceId: memberships.practiceId })
+      .select({ practiceId: memberships.practiceId, requireTotp: practices.requireTotp })
       .from(memberships)
+      .innerJoin(practices, eq(practices.id, memberships.practiceId))
       .where(and(eq(memberships.userId, user.id), eq(memberships.active, true)))
       .orderBy(memberships.createdAt)
       .limit(1);
     await createSession(user.id, membership?.practiceId ?? null, false);
-    return { ok: true, next: user.totpEnabledAt ? "/two-factor" : "/two-factor/setup" };
+    // The authenticator is optional: with one, the code comes next; without one, the person is signed in,
+    // unless their practice requires an authenticator, in which case they set one up first.
+    if (user.totpEnabledAt) return { ok: true, next: "/two-factor" };
+    if (membership?.requireTotp) return { ok: true, next: "/two-factor/setup" };
+    await audit(membership?.practiceId ?? null, user.id, "user.signed_in");
+    return { ok: true, next: "/app" };
   });
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
@@ -214,6 +220,9 @@ export const getMe = createServerFn({ method: "GET" }).handler(async () => {
     name: s.name,
     email: s.email,
     totpEnabled: s.totpEnabled,
+    totpRequired: s.totpRequired,
+    /** null = fully signed in; "code" = enter the authenticator code; "setup" = the practice requires one. */
+    step: s.step,
     mfaPassed: s.mfaPassed,
     practiceName: s.practiceName,
     role: s.role,
@@ -359,5 +368,23 @@ export const resetPassword = createServerFn({ method: "POST" })
     await endAllSessions(row.userId);
     await audit(null, row.userId, "user.password_reset");
     await securityEmail(row.email, row.name, "Your password was changed");
+    return { ok: true };
+  });
+
+/** Turns the authenticator off (needs a current code). Not allowed when the practice requires one. */
+export const disableTotp = createServerFn({ method: "POST" })
+  .validator((input: unknown) => codeInput.parse(input))
+  .handler(async ({ data }): Promise<Result> => {
+    const s = await getSession();
+    if (!s || !s.mfaPassed) return { ok: false, error: "Sign in again." };
+    if (!s.totpEnabled) return { ok: false, error: "Your authenticator is already off." };
+    if (s.totpRequired) return { ok: false, error: "Your practice requires an authenticator app, so it can't be turned off." };
+    if (!(await checkCode(s.userId, data.code))) {
+      return { ok: false, error: "That code didn't match. Try the newest code in your app." };
+    }
+    await db().update(users).set({ totpEnabledAt: null, totpSecretEnc: null, totpLastStep: null }).where(eq(users.id, s.userId));
+    await db().delete(recoveryCodes).where(eq(recoveryCodes.userId, s.userId));
+    await audit(s.practiceId, s.userId, "user.totp_disabled");
+    await securityEmail(s.email, s.name, "The authenticator app was turned off");
     return { ok: true };
   });

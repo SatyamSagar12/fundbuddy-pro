@@ -31,7 +31,7 @@ export async function requireMember(
 ): Promise<Member> {
   const s = await getSession();
   if (!s) throw redirect({ to: "/login" });
-  if (!s.mfaPassed) throw redirect({ to: s.totpEnabled ? "/two-factor" : "/two-factor/setup" });
+  if (s.step) throw redirect({ to: s.step === "code" ? "/two-factor" : "/two-factor/setup" });
   if (!s.practiceId || !s.role) throw redirect({ to: "/no-access" });
   if (roles && !roles.includes(s.role)) throw new Error("Only the practice owner can do this.");
   if (!options.allowLocked && (await billingFor(s.practiceId)).state === "locked") {

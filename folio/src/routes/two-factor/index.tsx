@@ -8,8 +8,7 @@ export const Route = createFileRoute("/two-factor/")({
   beforeLoad: async () => {
     const me = await getMe();
     if (!me) throw redirect({ to: "/login" });
-    if (!me.totpEnabled) throw redirect({ to: "/two-factor/setup" });
-    if (me.mfaPassed) throw redirect({ to: "/app" });
+    if (me.step !== "code") throw redirect({ to: me.step === "setup" ? "/two-factor/setup" : "/app" });
   },
   head: () => ({ meta: [{ title: "Enter your code · Anqulas Folio" }] }),
   component: VerifyCodePage,
@@ -50,7 +49,7 @@ function VerifyCodePage() {
           {error && <Notice tone="error">{error}</Notice>}
           <Field label="Recovery code" name="recovery" placeholder="ABCDE-23456" autoComplete="off" required />
           <p className="text-sm text-muted">
-            This removes your old authenticator. You'll set up a new one on your new phone straight away.
+            This removes your old authenticator. You can then set up a new one on your new phone.
           </p>
           <Button type="submit" disabled={busy} className="w-full">
             {busy ? "Checking…" : "Use recovery code"}

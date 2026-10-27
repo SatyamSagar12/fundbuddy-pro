@@ -12,14 +12,18 @@ father until the switch-over. Changes here never rebuild or redeploy it: the old
 
 - **Sign-up** creates a practice on a 30-day trial with Growth limits. **Email confirmation** happens by a button,
   not by opening the link, so mail scanners can't use it up.
-- **Authenticator required.** Every account must set up an authenticator app (Google or Microsoft Authenticator)
-  before seeing any data. Setup also shows **10 one-time recovery codes**.
-- **Lost phone.** On the code screen, "Lost your phone?" accepts a recovery code. It removes the old authenticator
-  and makes the person set up a new one straight away. You can also reset someone's authenticator from `/platform`
+- **Authenticator optional.** People sign in with email and password. Home recommends adding an authenticator app
+  (Google or Microsoft Authenticator); anyone can turn it on or off in Settings → Security. Turning it off needs a
+  current code. Setup shows **10 one-time recovery codes**.
+- **Owner can require it.** Settings → Practice → "Require an authenticator app for everyone". Members without one
+  must set it up at their next page load, and can't turn it off. The owner needs their own turned on first.
+- **The platform console always requires it** (`/platform`), because it controls every practice and payment.
+- **Lost phone.** On the code screen, "Lost your phone?" accepts a recovery code. It removes the old authenticator;
+  the person sets up a new one (straight away if their practice requires it). You can also reset someone's authenticator from `/platform`
   after checking who they are.
-- **Forgot password.** The emailed link works once, for 60 minutes. Resetting signs out every device, and the
-  authenticator is still needed afterwards.
-- **Security emails** go out for password changes, authenticator resets and new recovery codes.
+- **Forgot password.** The emailed link works once, for 60 minutes. Resetting signs out every device; an authenticator,
+  if turned on, is still needed afterwards.
+- **Security emails** go out for password changes, authenticators turned off or reset, and new recovery codes.
 - **Protections:**
   - 10 wrong passwords lock the account for 15 minutes.
   - Rate limits on every sign-in step.
@@ -55,7 +59,7 @@ father until the switch-over. Changes here never rebuild or redeploy it: the old
 
 **Platform console** (`/platform`)
 
-- Only for `PLATFORM_ADMIN_EMAILS`, within 12 hours of passing the authenticator. Everyone else gets "not found".
+- Only for `PLATFORM_ADMIN_EMAILS`, with an authenticator turned on and its code entered in the last 12 hours. Everyone else gets "not found".
 - Totals and monthly revenue.
 - UPI payments to confirm or reject (the owner is emailed either way).
 - Per practice: extend the trial, record a payment made outside the app, suspend or restore.
@@ -147,8 +151,7 @@ You do these steps, because they need your accounts and secrets. Never paste a s
 1. **Export the old data.** In the old app's Lovable project → Cloud → Database, export the tables `clients`,
    `investments` and `sips` as CSV. Save them as `clients.csv`, `investments.csv` and `sips.csv` in one folder on
    your computer, not in this repo.
-2. **Create his account.** Your father signs up at folio.anqulas.com with his own email and sets up his
-   authenticator.
+2. **Create his account.** Your father signs up at folio.anqulas.com with his own email.
 3. **Dry run first**, then the real import:
    ```sh
    DATABASE_URL='<session pooler URL>' MASTER_KEY='<the production MASTER_KEY>' \

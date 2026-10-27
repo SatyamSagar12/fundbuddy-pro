@@ -52,6 +52,8 @@ export const practices = pgTable("practices", {
   /** This practice's data key, encrypted with the master key. */
   dataKeyWrapped: text("data_key_wrapped").notNull(),
   status: text("status").notNull().default("active"),
+  /** The owner can make an authenticator app compulsory for everyone in the practice. Off by default. */
+  requireTotp: boolean("require_totp").notNull().default(false),
   createdAt: createdAt(),
 });
 

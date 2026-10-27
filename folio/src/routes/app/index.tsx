@@ -34,6 +34,18 @@ function HomePage() {
         ))}
       </div>
 
+      {!me.totpEnabled && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 !py-4">
+          <p className="text-[15px]">
+            <b>Recommended:</b> add a code from your phone to your sign-in, so a leaked password alone can't open your
+            clients' data.
+          </p>
+          <Link to="/app/settings/security" className="font-semibold whitespace-nowrap text-bronze underline">
+            Set it up
+          </Link>
+        </Card>
+      )}
+
       {d.clients === 0 ? (
         <Card>
           <h2 className="text-lg font-semibold">Next steps</h2>

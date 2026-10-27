@@ -81,12 +81,15 @@ try {
   check(true, "wrong password refused");
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await waitForUrl(page, "/two-factor/setup");
-  check(true, "first sign-in goes to authenticator setup");
+  await waitForUrl(page, "/app");
+  check(true, "first sign-in goes straight to the app (authenticator is optional)");
 
-  await page.goto(`${BASE}/app`);
+  await page.goto(`${BASE}/app/settings/security`, { waitUntil: "networkidle" });
+  check((await page.getByTestId("totp-status").textContent())?.startsWith("Off."), "Security shows the authenticator off");
+  await page.getByRole("link", { name: "Turn on" }).click();
   await waitForUrl(page, "/two-factor/setup");
-  check(true, "the app stays closed until the authenticator is set up");
+  await page.getByRole("link", { name: "Not now" }).waitFor();
+  check(true, "voluntary setup can be skipped");
 
   const secret = (await page.getByTestId("totp-secret").textContent())!;
   await page.getByLabel("6-digit code").fill("000000");
@@ -99,7 +102,7 @@ try {
   await page.getByRole("button", { name: /I've saved them/ }).click();
   await waitForUrl(page, "/app");
   await page.getByText("Good to see you, Test").waitFor();
-  check(true, "authenticator set up; Home opens");
+  check(true, "authenticator turned on; Home opens");
 
   await page.getByRole("link", { name: "Clients" }).first().click();
   await page.getByText("No clients yet.").waitFor();

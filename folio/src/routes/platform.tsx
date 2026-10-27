@@ -199,7 +199,7 @@ function PlatformPage() {
             e.preventDefault();
             const email = String(new FormData(e.currentTarget).get("email") ?? "");
             if (!confirm(`Remove the authenticator from ${email}?`)) return;
-            void run(() => resetUserAuthenticator({ data: { email } }), "Authenticator removed. They set up a new one at their next sign-in.");
+            void run(() => resetUserAuthenticator({ data: { email } }), "Authenticator removed. They can sign in with their password and set up a new one.");
           }}
         >
           <div className="min-w-64 flex-1">
