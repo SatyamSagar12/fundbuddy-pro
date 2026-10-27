@@ -12,7 +12,7 @@ import { withPractice } from "@/server/db/scope";
 import { investors, payments, practices } from "@/server/db/schema";
 import { requireMember } from "@/server/member";
 import { billingFor, seatsUsed } from "@/server/billing";
-import { appEnv } from "@/server/env";
+import { appEnv, appUrl } from "@/server/env";
 import { audit } from "@/server/security";
 import { sendMail } from "@/server/mailer";
 import { underLimit } from "@/server/rate-limit";
@@ -106,7 +106,7 @@ export const submitUtr = createServerFn({ method: "POST" })
       await sendMail({
         to,
         subject: `UPI payment to check: ₹${plan.inr[data.months]} (UTR ${data.utr})`,
-        text: `A practice says it paid ₹${plan.inr[data.months]} for ${plan.name}, ${data.months} month(s), UTR ${data.utr}.\nCheck your UPI app, then confirm or reject it at ${appEnv().APP_URL}/platform.`,
+        text: `A practice says it paid ₹${plan.inr[data.months]} for ${plan.name}, ${data.months} month(s), UTR ${data.utr}.\nCheck your UPI app, then confirm or reject it at ${appUrl()}/platform.`,
       });
     }
     return { ok: true as const };

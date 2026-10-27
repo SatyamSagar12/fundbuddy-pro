@@ -1,8 +1,10 @@
 /** Typed access to the Worker's settings and secrets (wrangler.jsonc vars + `wrangler secret put`). */
 import { env as cfEnv } from "cloudflare:workers";
+import { getRequestUrl } from "@tanstack/react-start/server";
 
 export type AppEnv = {
-  APP_URL: string;
+  /** The site's address for links in emails. When unset, the address the request came in on is used. */
+  APP_URL?: string;
   MAIL_FROM: string;
   SES_REGION: string;
   MASTER_KEY: string;
@@ -21,4 +23,11 @@ export function appEnv(): AppEnv {
     if (!e[key]) throw new Error(`Missing secret ${key}. Locally: copy .dev.vars.example to .dev.vars.`);
   }
   return e as AppEnv;
+}
+
+/** The site's public address, without a trailing slash. */
+export function appUrl(): string {
+  const configured = appEnv().APP_URL?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  return getRequestUrl().origin;
 }

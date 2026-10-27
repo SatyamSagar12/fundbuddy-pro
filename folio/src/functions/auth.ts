@@ -12,7 +12,7 @@ import { z } from "zod";
 import QRCode from "qrcode";
 import { db } from "@/server/db/client";
 import { emailTokens, memberships, practices, recoveryCodes, users } from "@/server/db/schema";
-import { appEnv } from "@/server/env";
+import { appEnv, appUrl } from "@/server/env";
 import { hmacHex, newWrappedDataKey, randomToken, sealWithMaster } from "@/server/crypto";
 import { dummyPasswordHash, hashPassword, passwordProblem, verifyPassword } from "@/server/password";
 import { newTotpSecret, otpauthUrl } from "@/server/totp";
@@ -21,7 +21,7 @@ import { billingFor } from "@/server/billing";
 import { createSession, endAllSessions, endSession, getSession, markMfaPassed } from "@/server/session";
 import { audit, clientIp, newRecoveryCodes, securityEmail, consumeRecoveryCode } from "@/server/security";
 import { underLimit } from "@/server/rate-limit";
-import { sendMail } from "@/server/mailer";
+import { emailWorks, sendMail } from "@/server/mailer";
 
 const TRIAL_DAYS = 30;
 const VERIFY_HOURS = 48;
@@ -41,7 +41,8 @@ async function tokenHash(token: string): Promise<string> {
   return hmacHex(appEnv().SESSION_SECRET, `email-token:${token}`);
 }
 
-async function sendVerification(userId: string, to: string, name: string): Promise<void> {
+/** Returns false when no email service is set up yet: the platform admin then approves the account. */
+async function sendVerification(userId: string, to: string, name: string): Promise<boolean> {
   const token = randomToken();
   await db()
     .insert(emailTokens)
@@ -51,8 +52,8 @@ async function sendVerification(userId: string, to: string, name: string): Promi
       purpose: "verify",
       expiresAt: new Date(Date.now() + VERIFY_HOURS * 3600 * 1000),
     });
-  const link = `${appEnv().APP_URL}/verify-email?token=${encodeURIComponent(token)}`;
-  await sendMail({
+  const link = `${appUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+  return sendMail({
     to,
     subject: "Confirm your email for Anqulas Folio",
     text: `Hello ${name},\n\nConfirm your email to finish setting up Anqulas Folio:\n${link}\n\nThe link works for ${VERIFY_HOURS} hours. If you didn't sign up, ignore this email.\n\nAnqulas Folio`,
@@ -76,7 +77,7 @@ const signupInput = z.object({
 
 export const signup = createServerFn({ method: "POST" })
   .validator((input: unknown) => signupInput.parse(input))
-  .handler(async ({ data }): Promise<Result> => {
+  .handler(async ({ data }): Promise<Result<{ emailSent: boolean }>> => {
     if (!(await underLimit(`signup:ip:${clientIp()}`, 5, 3600))) {
       return { ok: false, error: "Too many sign-ups from this network. Try again in an hour." };
     }
@@ -89,9 +90,9 @@ export const signup = createServerFn({ method: "POST" })
       await sendMail({
         to: data.email,
         subject: "You already have an Anqulas Folio account",
-        text: `Someone (probably you) tried to sign up again with this email.\nSign in at ${appEnv().APP_URL}/login. If you forgot your password, use "Forgot password" there.\n\nAnqulas Folio`,
+        text: `Someone (probably you) tried to sign up again with this email.\nSign in at ${appUrl()}/login. If you forgot your password, use "Forgot password" there.\n\nAnqulas Folio`,
       });
-      return { ok: true };
+      return { ok: true, emailSent: true };
     }
     if (existing) {
       // An unconfirmed earlier sign-up: replace it, so nobody can squat an address they don't own.
@@ -121,8 +122,8 @@ export const signup = createServerFn({ method: "POST" })
       return user!.id;
     });
     await audit(practiceId, userId, "practice.created");
-    await sendVerification(userId, data.email, data.name);
-    return { ok: true };
+    const emailSent = await sendVerification(userId, data.email, data.name);
+    return { ok: true, emailSent };
   });
 
 export const resendVerification = createServerFn({ method: "POST" })
@@ -186,7 +187,12 @@ export const login = createServerFn({ method: "POST" })
       return { ok: false, error: WRONG };
     }
     if (!user.emailVerifiedAt) {
-      return { ok: false, error: "Confirm your email first. We can send the link again." };
+      return {
+        ok: false,
+        error: emailWorks()
+          ? "Confirm your email first. We can send the link again."
+          : "Your account is waiting for approval. We'll let you know when it's ready.",
+      };
     }
     await db().update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id));
     const [membership] = await db()
@@ -328,7 +334,7 @@ export const forgotPassword = createServerFn({ method: "POST" })
     await sendMail({
       to: user.email,
       subject: "Reset your Anqulas Folio password",
-      text: `Hello ${user.name},\n\nTo choose a new password, open:\n${appEnv().APP_URL}/reset-password?token=${encodeURIComponent(token)}\n\nThe link works for ${RESET_MINUTES} minutes, once. If you didn't ask for this, ignore this email; your password stays the same.\n\nAnqulas Folio`,
+      text: `Hello ${user.name},\n\nTo choose a new password, open:\n${appUrl()}/reset-password?token=${encodeURIComponent(token)}\n\nThe link works for ${RESET_MINUTES} minutes, once. If you didn't ask for this, ignore this email; your password stays the same.\n\nAnqulas Folio`,
     });
     return { ok: true };
   });

@@ -1,6 +1,6 @@
 /** Platform admin console: payments to confirm, trials, suspensions, authenticator resets. */
 import { createServerFn } from "@tanstack/react-start";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 
 /** Drizzle prints a bare "id" inside sql``; subqueries below need the table name to be unambiguous. */
 const PRACTICE_ID = sql.raw(`"practices"."id"`);
@@ -10,8 +10,8 @@ import { investors, memberships, payments, practices, recoveryCodes, sessions, u
 import { requirePlatformAdmin } from "@/server/platform";
 import { applyPeriod, billingState } from "@/server/billing";
 import { audit } from "@/server/security";
-import { sendMail } from "@/server/mailer";
-import { appEnv } from "@/server/env";
+import { emailWorks, sendMail } from "@/server/mailer";
+import { appUrl } from "@/server/env";
 import { PLANS, PLAN_IDS, isPlanId, type PlanId } from "@/lib/plans";
 
 async function ownerOf(practiceId: string) {
@@ -67,10 +67,19 @@ export const getPlatform = createServerFn({ method: "GET" }).handler(async () =>
     .orderBy(payments.createdAt);
   const [userCount] = await db().select({ n: count() }).from(users);
   const [clientCount] = await db().select({ n: count() }).from(investors);
+  // Accounts waiting for email confirmation (approve them here while no email service is set up).
+  const unconfirmed = await db()
+    .select({ id: users.id, email: users.email, name: users.name, createdAt: users.createdAt })
+    .from(users)
+    .where(isNull(users.emailVerifiedAt))
+    .orderBy(desc(users.createdAt))
+    .limit(100);
   const byState = list.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.billing.state]: (acc[r.billing.state] ?? 0) + 1 }), {});
   return {
     totals: { practices: list.length, users: userCount?.n ?? 0, clients: clientCount?.n ?? 0, mrr: Math.round(mrr), byState },
     pending,
+    unconfirmed,
+    emailReady: emailWorks(),
     practices: list.map(({ billing, ...r }) => ({ ...r, state: billing.state, endsAt: billing.endsAt })),
   };
 });
@@ -103,8 +112,8 @@ export const decidePayment = createServerFn({ method: "POST" })
         subject: data.decision === "confirm" ? "Payment received: thank you" : "We couldn't find your payment",
         text:
           data.decision === "confirm"
-            ? `Hello ${owner.name},\n\nWe received ₹${result.amountMinor / 100} (UTR ${result.reference}). Your plan is updated: see ${appEnv().APP_URL}/app/settings/billing.\n\nAnqulas Folio`
-            : `Hello ${owner.name},\n\nWe couldn't find a payment with UTR ${result.reference}. Please check the number and enter it again at ${appEnv().APP_URL}/app/settings/billing, or reply with a screenshot of the payment.\n\nAnqulas Folio`,
+            ? `Hello ${owner.name},\n\nWe received ₹${result.amountMinor / 100} (UTR ${result.reference}). Your plan is updated: see ${appUrl()}/app/settings/billing.\n\nAnqulas Folio`
+            : `Hello ${owner.name},\n\nWe couldn't find a payment with UTR ${result.reference}. Please check the number and enter it again at ${appUrl()}/app/settings/billing, or reply with a screenshot of the payment.\n\nAnqulas Folio`,
       });
     }
     return { ok: true as const };
@@ -183,7 +192,27 @@ export const resetUserAuthenticator = createServerFn({ method: "POST" })
     await sendMail({
       to: u.email,
       subject: "Security notice: your authenticator was reset",
-      text: `Hello ${u.name},\n\nAt your request, Anqulas Folio support removed the authenticator app from your account. Sign in at ${appEnv().APP_URL}/login with your password; you can set up a new one under Settings → Security.\n\nIf you didn't ask for this, reply to this email straight away.\n\nAnqulas Folio`,
+      text: `Hello ${u.name},\n\nAt your request, Anqulas Folio support removed the authenticator app from your account. Sign in at ${appUrl()}/login with your password; you can set up a new one under Settings → Security.\n\nIf you didn't ask for this, reply to this email straight away.\n\nAnqulas Folio`,
+    });
+    return { ok: true as const };
+  });
+
+/** Confirms a sign-up by hand (used while no email service is set up, or if a confirmation email got lost). */
+export const approveUser = createServerFn({ method: "POST" })
+  .validator((input: unknown) => z.object({ userId: z.uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const admin = await requirePlatformAdmin();
+    const [u] = await db()
+      .update(users)
+      .set({ emailVerifiedAt: new Date() })
+      .where(and(eq(users.id, data.userId), isNull(users.emailVerifiedAt)))
+      .returning();
+    if (!u) return { ok: false as const, error: "Already confirmed." };
+    await audit(null, u.id, "platform.user_approved", { meta: { admin: admin.email } });
+    await sendMail({
+      to: u.email,
+      subject: "Your Anqulas Folio account is ready",
+      text: `Hello ${u.name},\n\nYour account is approved. Sign in at ${appUrl()}/login.\n\nAnqulas Folio`,
     });
     return { ok: true as const };
   });

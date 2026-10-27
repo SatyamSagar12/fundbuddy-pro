@@ -114,37 +114,54 @@ Changing the database: edit `src/server/db/schema.ts`, then `npm run db:generate
 row-level security in a custom migration (`npx drizzle-kit generate --custom --name <name>`); copy the pattern in
 `0001_row_level_security.sql`. The RLS test fails if a table is left without it.
 
-## Production setup (one time)
+## Putting it online
 
-You do these steps, because they need your accounts and secrets. Never paste a secret into a chat or a commit.
+The **"Publish Anqulas Folio"** job (`.github/workflows/folio-publish.yml`) does everything in one run:
+- creates or updates the database tables;
+- connects Cloudflare to the database (Hyperdrive, caching off);
+- uploads the secrets;
+- publishes the app, and prints its address on the run's summary page.
 
-1. **Database (done):** Supabase project in Mumbai, Data API off.
-2. **Run the migrations:**
-   - Supabase → Connect → copy the **Session pooler** URL (port 5432) and put your database password in it.
-   - From `folio/`, run `DATABASE_URL='<that URL>' npm run db:migrate`.
-3. **Cloudflare Workers Paid** ($5/month): Workers & Pages → Plans.
-4. **Hyperdrive.** Use the same session pooler URL, with **caching off**. Caching is off so a stored answer can
-   never be served to a different practice:
-   ```sh
-   npx wrangler hyperdrive create folio-db --caching-disabled --connection-string='<session pooler URL>'
-   ```
-   Put the printed id into `wrangler.jsonc` → `hyperdrive[0].id`.
-5. **Secrets.** Generate each with the `node -e …` line above. Keep `MASTER_KEY` in your password manager too: if
-   it is lost, encrypted PAN and bank details cannot be read.
-   ```sh
-   npx wrangler secret put MASTER_KEY
-   npx wrangler secret put SESSION_SECRET
-   npx wrangler secret put PLATFORM_ADMIN_EMAILS   # your email: opens /platform
-   npx wrangler secret put UPI_ID                  # where plan payments go, e.g. yourname@okhdfcbank
-   ```
-   Optionally set `UPI_PAYEE_NAME` the same way. It's the name payers see (default "Anqulas").
-6. **Email (Amazon SES, Mumbai):**
-   - Verify the domain `mail.folio.anqulas.com` with DKIM, then request production access.
-   - Create an IAM user allowed only `ses:SendEmail`.
-   - `npx wrangler secret put SES_ACCESS_KEY_ID` and `npx wrangler secret put SES_SECRET_ACCESS_KEY`.
-7. **Deploy:** `npm run deploy`. Later, deploys run from GitHub (Actions → Anqulas Folio → Run workflow → deploy),
-   once the `FOLIO_*` secrets listed in `.github/workflows/folio.yml` are added.
-8. **Domain:** Workers & Pages → anqulas-folio → Settings → Domains & Routes → add `folio.anqulas.com`.
+Run it again any time to publish the latest version. Never paste a secret into a chat or a commit.
+
+**One-time setup:**
+
+1. **Cloudflare plan.** Workers & Pages → Plans → Workers Paid ($5/month). Opening Workers & Pages once also
+   creates your free `….workers.dev` address.
+2. **Cloudflare token.** My Profile → API Tokens → Create Token → template **"Edit Cloudflare Workers"**. Add the
+   permission **Account → Hyperdrive → Edit**, then create it and copy the token.
+3. **GitHub secrets.** GitHub → this repo → Settings → Secrets and variables → Actions → New repository secret.
+   Add each of these:
+
+   | Name | Value |
+   |---|---|
+   | `FOLIO_CLOUDFLARE_API_TOKEN` | the token from step 2 |
+   | `FOLIO_DATABASE_URL` | Supabase (Mumbai) → Connect → **Session pooler** URL, with your database password in place of `[YOUR-PASSWORD]` |
+   | `FOLIO_MASTER_KEY` | any random text of 32+ characters (a password manager's "generate"). **Keep a copy**: without it, PAN and bank details can't be read |
+   | `FOLIO_SESSION_SECRET` | a different random text of 32+ characters |
+   | `FOLIO_ADMIN_EMAIL` | your email; this account opens `/platform` |
+   | `FOLIO_UPI_ID` (optional) | where plan payments go, e.g. `yourname@okhdfcbank` |
+
+   `CLOUDFLARE_ACCOUNT_ID` is already there from the old app.
+4. **Publish.** Actions → "Publish Anqulas Folio" → Run workflow. The summary shows the address.
+5. **Make yourself the admin:**
+   - Open the address, sign up with `FOLIO_ADMIN_EMAIL`.
+   - Run the workflow again with **"Also approve the admin email"** ticked. Until an email service is set up,
+     nobody can confirm their email, so sign-ups are approved by hand.
+   - Sign in and turn on an authenticator (Settings → Security). `/platform` needs it.
+   - From then on, approve other sign-ups (your father, for example) in `/platform`.
+
+**Later:**
+
+- **Email (Amazon SES, Mumbai):**
+  - Verify `mail.folio.anqulas.com` with DKIM, and request production access.
+  - Create an IAM user allowed only `ses:SendEmail`.
+  - Add `FOLIO_SES_ACCESS_KEY_ID` and `FOLIO_SES_SECRET_ACCESS_KEY`, then run the workflow again.
+  - Confirmation, reset and invitation emails then go out by themselves.
+- **Your domain:**
+  - Workers & Pages → anqulas-folio → Settings → Domains & Routes → add `folio.anqulas.com`. This needs
+    anqulas.com's DNS on Cloudflare.
+  - Then set `APP_URL` to `https://folio.anqulas.com` in Settings → Variables.
 
 ## Moving your father's data
 

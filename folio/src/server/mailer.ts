@@ -3,7 +3,7 @@
  * the console and kept in memory for the dev outbox page (/dev/outbox), which only works locally.
  */
 import { AwsClient } from "aws4fetch";
-import { appEnv } from "./env";
+import { appEnv, appUrl } from "./env";
 
 export type Mail = { to: string; subject: string; text: string };
 
@@ -13,18 +13,33 @@ export function readDevOutbox(): readonly (Mail & { at: string })[] {
   return devOutbox;
 }
 
+function isLocal(): boolean {
+  try {
+    return appUrl().startsWith("http://localhost");
+  } catch {
+    return false;
+  }
+}
+
+/** True when emails actually reach people: an email service is set up, or locally (dev outbox). */
+export function emailWorks(): boolean {
+  return sesConfigured() || isLocal();
+}
+
 export function sesConfigured(): boolean {
   const e = appEnv();
   return Boolean(e.SES_ACCESS_KEY_ID && e.SES_SECRET_ACCESS_KEY);
 }
 
-export async function sendMail(mail: Mail): Promise<void> {
+/** Sends an email. Returns false when no email service is set up (the mail is only logged). */
+export async function sendMail(mail: Mail): Promise<boolean> {
   const e = appEnv();
   if (!sesConfigured()) {
     devOutbox.unshift({ ...mail, at: new Date().toISOString() });
     devOutbox.length = Math.min(devOutbox.length, 50);
-    console.log(`[mail] to ${mail.to}: ${mail.subject}\n${mail.text}`);
-    return;
+    console.log(`[mail not sent: no email service] to ${mail.to}: ${mail.subject}`);
+    // Locally the dev outbox (/dev/outbox) stands in for delivery.
+    return isLocal();
   }
   const aws = new AwsClient({
     accessKeyId: e.SES_ACCESS_KEY_ID!,
@@ -47,4 +62,5 @@ export async function sendMail(mail: Mail): Promise<void> {
     }),
   });
   if (!res.ok) throw new Error(`SES send failed: ${res.status} ${await res.text()}`);
+  return true;
 }

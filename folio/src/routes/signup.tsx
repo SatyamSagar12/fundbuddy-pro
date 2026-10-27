@@ -12,6 +12,7 @@ export const Route = createFileRoute("/signup")({
 function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [awaitingApproval, setAwaitingApproval] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -28,13 +29,32 @@ function SignupPage() {
     setError(null);
     try {
       const res = await signup({ data });
-      if (res.ok) setSentTo(data.email);
+      if (res.ok) {
+        setSentTo(data.email);
+        setAwaitingApproval(!res.emailSent);
+      }
       else setError(res.error);
     } catch (err) {
       setError(firstIssue(err) ?? SOMETHING_WRONG);
     } finally {
       setBusy(false);
     }
+  }
+
+  if (sentTo && awaitingApproval) {
+    return (
+      <AuthFrame title="Account created" subtitle={<>for <b>{sentTo}</b></>}>
+        <p className="text-muted">
+          Anqulas Folio is in early access. We'll approve your account shortly; you can then sign in with this email and
+          password.
+        </p>
+        <p className="mt-6">
+          <Link to="/login" className="font-semibold text-bronze underline">
+            Go to sign in
+          </Link>
+        </p>
+      </AuthFrame>
+    );
   }
 
   if (sentTo) {

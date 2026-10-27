@@ -9,7 +9,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { db } from "./db/client";
 import { auditLog, recoveryCodes } from "./db/schema";
 import { hmacHex, randomBytes } from "./crypto";
-import { appEnv } from "./env";
+import { appEnv, appUrl } from "./env";
 import { sendMail } from "./mailer";
 
 /** No 0/O, 1/I/L: easy to read aloud and type from paper. */
@@ -87,6 +87,6 @@ export async function securityEmail(to: string, name: string, what: string): Pro
   await sendMail({
     to,
     subject: `Security notice: ${what}`,
-    text: `Hello ${name},\n\n${what} on your Anqulas Folio account (${new Date().toUTCString()}).\n\nIf this was you, no action is needed. If it wasn't, reset your password at ${appEnv().APP_URL}/forgot-password straight away and tell your practice owner.\n\nAnqulas Folio`,
+    text: `Hello ${name},\n\n${what} on your Anqulas Folio account (${new Date().toUTCString()}).\n\nIf this was you, no action is needed. If it wasn't, reset your password at ${appUrl()}/forgot-password straight away and tell your practice owner.\n\nAnqulas Folio`,
   });
 }

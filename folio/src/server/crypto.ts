@@ -37,10 +37,20 @@ export function randomToken(): string {
   return toB64url(randomBytes(32));
 }
 
-function keyBytes(base64: string, name: string): Uint8Array {
-  const bytes = fromB64(base64.trim());
-  if (bytes.length !== 32) throw new Error(`${name} must be 32 bytes, base64-encoded`);
-  return bytes;
+/**
+ * A secret key setting: either 32 random bytes in base64, or any random text of at least 32 characters (it is
+ * hashed to 32 bytes), so a password manager's "generate password" works too.
+ */
+async function keyBytes(secret: string, name: string): Promise<Uint8Array> {
+  const text = secret.trim();
+  try {
+    const bytes = fromB64(text);
+    if (bytes.length === 32 && /^[A-Za-z0-9+/_-]{43}=?$/.test(text)) return bytes;
+  } catch {
+    // not base64: treated as text below
+  }
+  if (text.length < 32) throw new Error(`${name} must be at least 32 random characters`);
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(`anqulas-folio:${name}:${text}`)));
 }
 
 async function aesKey(raw: Uint8Array): Promise<CryptoKey> {
@@ -74,7 +84,7 @@ async function open(key: CryptoKey, sealed: string, aad: string): Promise<Uint8A
 
 /** HMAC-SHA256, hex. */
 export async function hmacHex(secretBase64: string, data: string): Promise<string> {
-  const key = await hmacKey(keyBytes(secretBase64, "SESSION_SECRET"));
+  const key = await hmacKey(await keyBytes(secretBase64, "SESSION_SECRET"));
   const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(data)));
   return [...sig].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -82,16 +92,16 @@ export async function hmacHex(secretBase64: string, data: string): Promise<strin
 // ── Master key ────────────────────────────────────────────────────────────────
 
 export async function newWrappedDataKey(masterKeyB64: string, practiceId: string): Promise<string> {
-  const master = await aesKey(keyBytes(masterKeyB64, "MASTER_KEY"));
+  const master = await aesKey(await keyBytes(masterKeyB64, "MASTER_KEY"));
   return seal(master, randomBytes(32), `practice-key:${practiceId}`);
 }
 
 export async function sealWithMaster(masterKeyB64: string, plaintext: string, aad: string): Promise<string> {
-  return seal(await aesKey(keyBytes(masterKeyB64, "MASTER_KEY")), enc.encode(plaintext), aad);
+  return seal(await aesKey(await keyBytes(masterKeyB64, "MASTER_KEY")), enc.encode(plaintext), aad);
 }
 
 export async function openWithMaster(masterKeyB64: string, sealed: string, aad: string): Promise<string> {
-  return dec.decode(await open(await aesKey(keyBytes(masterKeyB64, "MASTER_KEY")), sealed, aad));
+  return dec.decode(await open(await aesKey(await keyBytes(masterKeyB64, "MASTER_KEY")), sealed, aad));
 }
 
 // ── Practice data key ─────────────────────────────────────────────────────────
@@ -113,7 +123,7 @@ export async function practiceCrypto(
   practiceId: string,
   wrappedKey: string,
 ): Promise<PracticeCrypto> {
-  const master = await aesKey(keyBytes(masterKeyB64, "MASTER_KEY"));
+  const master = await aesKey(await keyBytes(masterKeyB64, "MASTER_KEY"));
   const raw = await open(master, wrappedKey, `practice-key:${practiceId}`);
   const key = await aesKey(raw);
   const hkey = await hmacKey(raw);

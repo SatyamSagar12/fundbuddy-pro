@@ -11,7 +11,7 @@ import { invites, investors, memberships, practices, sessions, users } from "@/s
 import { requireMember, scopeOf } from "@/server/member";
 import { billingFor, seatsUsed } from "@/server/billing";
 import { hmacHex, randomToken } from "@/server/crypto";
-import { appEnv } from "@/server/env";
+import { appEnv, appUrl } from "@/server/env";
 import { sendMail } from "@/server/mailer";
 import { audit, clientIp } from "@/server/security";
 import { underLimit } from "@/server/rate-limit";
@@ -104,7 +104,7 @@ export const inviteMember = createServerFn({ method: "POST" })
     await sendMail({
       to: data.email,
       subject: `${m.name} invited you to ${p!.name} on Anqulas Folio`,
-      text: `Hello,\n\n${m.name} invited you to join ${p!.name} on Anqulas Folio as ${data.role === "subbroker" ? "a sub-broker (you'll see only the clients assigned to you)" : "staff"}.\n\nAccept the invitation:\n${appEnv().APP_URL}/invite?token=${encodeURIComponent(token)}\n\nThe link works for ${INVITE_DAYS} days.\n\nAnqulas Folio`,
+      text: `Hello,\n\n${m.name} invited you to join ${p!.name} on Anqulas Folio as ${data.role === "subbroker" ? "a sub-broker (you'll see only the clients assigned to you)" : "staff"}.\n\nAccept the invitation:\n${appUrl()}/invite?token=${encodeURIComponent(token)}\n\nThe link works for ${INVITE_DAYS} days.\n\nAnqulas Folio`,
     });
     await audit(m.practiceId, m.userId, "team.invited", { target: data.email, meta: { role: data.role } });
     return { ok: true as const };

@@ -29,6 +29,13 @@ describe("practice encryption", () => {
     expect(await a.taxIdHash("ABCDE1234F")).not.toBe(await b.taxIdHash("ABCDE1234F"));
   });
 
+  it("accepts a long random text as the master key, not just base64", async () => {
+    const text = "correct horse battery staple, made long enough 1234";
+    const s1 = await sealWithMaster(text, "x", "a");
+    expect(await openWithMaster(text, s1, "a")).toBe("x");
+    await expect(sealWithMaster("too short", "x", "a")).rejects.toThrow(/at least 32/);
+  });
+
   it("seals with the master key", async () => {
     const s = await sealWithMaster(MASTER, "secret", "totp:u1");
     expect(await openWithMaster(MASTER, s, "totp:u1")).toBe("secret");

@@ -8,8 +8,9 @@
   "observability": { "enabled": true },
   // Runs the Worker near the database (Mumbai) rather than near each visitor.
   "placement": { "mode": "smart" },
+  // APP_URL (the site's address for links in emails) is optional: without it, the address the request came in
+  // on is used. Set it once folio.anqulas.com is connected.
   "vars": {
-    "APP_URL": "https://folio.anqulas.com",
     "MAIL_FROM": "Anqulas Folio <no-reply@mail.folio.anqulas.com>",
     "SES_REGION": "ap-south-1"
   },

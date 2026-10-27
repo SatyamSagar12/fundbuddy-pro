@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import {
+  approveUser,
   decidePayment,
   extendTrial,
   getPlatform,
@@ -69,6 +70,33 @@ function PlatformPage() {
           .map(([s, n]) => `${STATE[s] ?? s}: ${n}`)
           .join(" · ") || "No practices yet"}
       </p>
+
+      {!d.emailReady && (
+        <Notice tone="info">
+          No email service is set up yet, so sign-ups can't confirm their email and no emails are sent. Approve new
+          accounts below.
+        </Notice>
+      )}
+      {d.unconfirmed.length > 0 && (
+        <Card className="!p-0">
+          <h2 className="px-5 pt-5 pb-2 text-lg font-semibold">Sign-ups waiting ({d.unconfirmed.length})</h2>
+          <ul className="divide-y divide-line">
+            {d.unconfirmed.map((u) => (
+              <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{u.name}</p>
+                  <p className="truncate text-sm text-muted">
+                    {u.email} · signed up {day(u.createdAt)}
+                  </p>
+                </div>
+                <Button disabled={busy} onClick={() => void run(() => approveUser({ data: { userId: u.id } }), `${u.email} approved.`)}>
+                  Approve
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card className="!p-0">
         <h2 className="px-5 pt-5 pb-2 text-lg font-semibold">UPI payments to check ({d.pending.length})</h2>
