@@ -6,6 +6,7 @@ import { db } from "@/server/db/client";
 import { withPractice } from "@/server/db/scope";
 import { auditLog, families, investors, practices, sips, transactions, users } from "@/server/db/schema";
 import { cryptoFor, requireMember, scopeOf } from "@/server/member";
+import { addSampleData, removeSampleData } from "@/server/sample-data";
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const m = await requireMember();
@@ -33,7 +34,13 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       .innerJoin(investors, eq(investors.id, transactions.investorId))
       .orderBy(desc(transactions.tradeDate), desc(transactions.createdAt))
       .limit(6);
+    const [sample] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(investors)
+      .where(sql`${investors.legacyId} like 'sample:%'`);
     return {
+      hasSample: (sample?.n ?? 0) > 0,
+      canRemoveSample: m.role !== "subbroker",
       clients: clients?.n ?? 0,
       activeSips: sipStats?.active ?? 0,
       monthlySip: Number(sipStats?.monthly ?? 0),
@@ -150,3 +157,23 @@ export const updatePractice = createServerFn({ method: "POST" })
     );
     return { ok: true as const };
   });
+
+/** Fills the practice with made-up sample clients, SIPs and investments to try every screen. */
+export const addSample = createServerFn({ method: "POST" }).handler(async () => {
+  const m = await requireMember(["owner", "staff", "subbroker"]);
+  const added = await addSampleData(scopeOf(m), await cryptoFor(m.practiceId), m.role === "subbroker" ? m.userId : null);
+  await withPractice(m.practiceId, (tx) =>
+    tx.insert(auditLog).values({ practiceId: m.practiceId, userId: m.userId, action: "sample.added", meta: { clients: added } }),
+  );
+  return { ok: true as const, added };
+});
+
+/** Deletes only the sample data; real clients are never touched. */
+export const removeSample = createServerFn({ method: "POST" }).handler(async () => {
+  const m = await requireMember(["owner", "staff"]);
+  const removed = await removeSampleData(scopeOf(m));
+  await withPractice(m.practiceId, (tx) =>
+    tx.insert(auditLog).values({ practiceId: m.practiceId, userId: m.userId, action: "sample.removed", meta: { clients: removed } }),
+  );
+  return { ok: true as const, removed };
+});

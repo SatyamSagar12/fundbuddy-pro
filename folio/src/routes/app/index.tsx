@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { getDashboard } from "@/functions/practice";
-import { Card } from "@/components/ui";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useState } from "react";
+import { addSample, getDashboard, removeSample } from "@/functions/practice";
+import { Button, Card, linkButtonSecondary } from "@/components/ui";
 import { day, money, txnType } from "@/lib/format";
 
 export const Route = createFileRoute("/app/")({
@@ -12,6 +13,18 @@ export const Route = createFileRoute("/app/")({
 function HomePage() {
   const d = Route.useLoaderData();
   const { me } = Route.useRouteContext();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  async function sample(action: "add" | "remove") {
+    if (action === "remove" && !confirm("Remove the 8 sample clients and their SIPs and investments? Your real clients stay.")) return;
+    setBusy(true);
+    try {
+      await (action === "add" ? addSample() : removeSample());
+      await router.invalidate();
+    } finally {
+      setBusy(false);
+    }
+  }
   const stats = [
     { label: "Clients", value: String(d.clients) },
     { label: "Active SIPs", value: String(d.activeSips) },
@@ -46,13 +59,31 @@ function HomePage() {
         </Card>
       )}
 
+      {d.hasSample && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 !py-4">
+          <p className="text-[15px]">
+            <b>Sample data is in your account</b> (8 made-up clients). Remove it when you're ready to add real clients.
+          </p>
+          {d.canRemoveSample && (
+            <Button variant="secondary" disabled={busy} onClick={() => void sample("remove")}>
+              {busy ? "Removing…" : "Remove sample data"}
+            </Button>
+          )}
+        </Card>
+      )}
+
       {d.clients === 0 ? (
         <Card>
-          <h2 className="text-lg font-semibold">Next steps</h2>
-          <p className="mt-1 text-muted">
-            Automatic import of CAMS and KFintech mailback, daily NAVs and client reports are being built. Your
-            clients will appear here once imported.
-          </p>
+          <h2 className="text-lg font-semibold">Get started</h2>
+          <p className="mt-1 text-muted">Add your first client, or fill the app with sample data to see how everything works.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link to="/app/clients/new" className={linkButtonSecondary}>
+              Add a client
+            </Link>
+            <Button disabled={busy} onClick={() => void sample("add")}>
+              {busy ? "Adding…" : "Add sample data"}
+            </Button>
+          </div>
         </Card>
       ) : (
         <Card>

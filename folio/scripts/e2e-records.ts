@@ -38,6 +38,29 @@ try {
   await p.getByRole("button", { name: "Sign in" }).click();
   await p.waitForURL((u) => u.pathname === "/app");
 
+  // ── Sample data ───────────────────────────────────────────────────────────
+  await go(p, "/app");
+  await p.getByRole("button", { name: "Add sample data" }).click();
+  await p.getByText("Sample data is in your account").waitFor();
+  check(true, "sample data added from Home");
+  await go(p, "/app/clients");
+  check((await p.locator("main li").count()) === 8, "8 sample clients listed");
+  await go(p, "/app/reports");
+  await p.waitForTimeout(800);
+  check((await p.locator(".recharts-bar-rectangle").count()) > 5, "reports have sample data to show");
+  // A real client added alongside must survive "Remove sample data".
+  await sql`insert into investors (practice_id, name) select m.practice_id, 'Real Client' from memberships m join users u on u.id = m.user_id where u.email = ${EMAIL}`;
+  p.once("dialog", (d) => void d.accept());
+  await go(p, "/app");
+  await p.getByRole("button", { name: "Remove sample data" }).click();
+  await p.getByText("Sample data is in your account").waitFor({ state: "detached" });
+  await go(p, "/app/clients");
+  const left = await p.locator("main li").allTextContents();
+  check(left.length === 1 && left[0]!.includes("Real Client"), "Remove sample data removed only the sample clients");
+  const [n] = await sql`select count(*)::int as n from transactions t join investors i on i.id = t.investor_id where i.name = 'Real Client'`;
+  await sql`delete from investors where name = 'Real Client' and practice_id = (select m.practice_id from memberships m join users u on u.id = m.user_id where u.email = ${EMAIL})`;
+  check(n!["n"] === 0, "no sample transactions left behind");
+
   // ── Clients ───────────────────────────────────────────────────────────────
   await go(p, "/app/clients");
   await p.getByRole("link", { name: "Add client" }).click();
