@@ -41,7 +41,7 @@ try {
 
   // ── CAMS report in a password ZIP ─────────────────────────────────────────
   await go(p, "/app/import");
-  await p.locator('input[type="file"]').setInputFiles(`${FIX}cams-feed.zip`);
+  await p.locator('input[type="file"]').setInputFiles(`${FIX}cams-feed-aes256.zip`);
   await p.getByRole("button", { name: "Read the file" }).click();
   await p.getByText("This ZIP is password-protected").waitFor();
   check(true, "a protected ZIP asks for its password");
@@ -61,7 +61,7 @@ try {
   await p.getByText("Imported 5 transactions").waitFor();
   check(true, "CAMS report imported");
 
-  await p.locator('input[type="file"]').setInputFiles(`${FIX}cams-feed.zip`);
+  await p.locator('input[type="file"]').setInputFiles(`${FIX}cams-feed-aes256.zip`);
   await p.getByRole("button", { name: "Read the file" }).click();
   await p.getByRole("button", { name: "Check against your clients" }).click();
   await p.getByRole("button", { name: "Nothing new to import" }).waitFor();

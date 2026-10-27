@@ -35,7 +35,7 @@ function ImportPage() {
         title="Import"
         subtitle="Bring in transactions from CAMS and KFintech reports, or from a client's CAS statement. Files are opened on this computer: their passwords never leave it."
       />
-      <div role="tablist" aria-label="What to import" className="reveal inline-flex gap-1 rounded-xl bg-soft p-1" style={order(2)}>
+      <div role="tablist" aria-label="What to import" className="reveal inline-flex max-w-full gap-1 overflow-x-auto rounded-xl bg-soft p-1" style={order(2)}>
         {(
           [
             ["registrar", "Registrar report", FileSpreadsheet],
@@ -49,7 +49,7 @@ function ImportPage() {
             aria-selected={kind === k}
             onClick={() => setKind(k)}
             className={clsx(
-              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[14px] font-medium transition-colors",
+              "inline-flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-[14px] font-medium whitespace-nowrap transition-colors",
               kind === k ? "bg-card text-text shadow-sm" : "text-muted hover:text-text",
             )}
           >

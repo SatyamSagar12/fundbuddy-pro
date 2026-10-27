@@ -58,6 +58,21 @@ describe("opening files", () => {
     const text = new TextDecoder().decode(await entry!.read("folio123"));
     expect(text).toBe(new TextDecoder().decode(fixture("cams-feed.csv")));
   });
+  it("opens WinZip AES ZIPs (as CAMS sends them), 256 and 128 bit, large ones too", async () => {
+    const [aes] = readZip(fixture("cams-feed-aes256.zip"));
+    await expect(aes!.read()).rejects.toMatchObject({ code: "password_needed" });
+    await expect(aes!.read("wrong")).rejects.toMatchObject({ code: "wrong_password" });
+    expect(new TextDecoder().decode(await aes!.read("folio123"))).toBe(new TextDecoder().decode(fixture("cams-feed.csv")));
+    const [big] = await readTables("cams-big-aes128.zip", fixture("cams-big-aes128.zip"), "folio123");
+    expect(big!.rows).toHaveLength(1200);
+    expect(big!.rows[1199]!["TRXNNO"]).toBe("91199");
+  });
+  it("refuses an AES ZIP whose data was altered", async () => {
+    const bytes = fixture("cams-feed-aes256.zip").slice();
+    bytes[80] = bytes[80]! ^ 0xff; // inside the encrypted data
+    const [e] = readZip(bytes);
+    await expect(e!.read("folio123")).rejects.toBeInstanceOf(ZipError);
+  });
   it("reads the same report from CSV, ZIP and DBF alike", async () => {
     const csv = (await readTables("cams-feed.csv", fixture("cams-feed.csv")))[0]!.rows;
     const zip = (await readTables("cams-feed.zip", fixture("cams-feed.zip"), "folio123"))[0]!.rows;
