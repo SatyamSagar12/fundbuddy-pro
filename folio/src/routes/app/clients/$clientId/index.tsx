@@ -3,7 +3,8 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { deleteClient, getClient } from "@/functions/clients";
 import { Button, Card, linkButtonSecondary, Notice, PageHeader } from "@/components/ui";
-import { day, money, txnType } from "@/lib/format";
+import { day, gainTone, money, navText, percent, txnType, units } from "@/lib/format";
+import { shownReturn } from "@/lib/holdings";
 import { SOMETHING_WRONG } from "@/lib/errors";
 
 export const Route = createFileRoute("/app/clients/$clientId/")({
@@ -31,7 +32,10 @@ function ClientPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
-  const invested = c.transactions.reduce((s, t) => s + (t.type === "redemption" ? -t.amount : t.amount), 0);
+  const tot = c.total;
+  const ret = shownReturn(tot);
+  const valued = c.holdings.length > 0;
+  const unmatchedInvested = c.unmatched.reduce((s, u) => s + u.netInvested, 0);
   const active = c.sips.filter((s) => s.status === "active");
   const monthly = active.reduce((s, x) => s + (x.frequency === "quarterly" ? x.amount / 3 : x.amount), 0);
 
@@ -62,18 +66,83 @@ function ClientPage() {
       />
       {error && <Notice tone="error">{error}</Notice>}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          ["Invested (recorded)", money(invested)],
-          ["Active SIPs", String(active.length)],
-          ["SIP per month", money(monthly)],
-        ].map(([k, v]) => (
-          <Card key={k} className="!p-5">
-            <p className="text-[13px] font-semibold tracking-wide text-muted uppercase">{k}</p>
-            <p className="mt-1 text-[22px] font-semibold tabular-nums">{v}</p>
+          { k: "Current value", v: valued ? money(tot.value) : "—", sub: tot.navDate ? `NAV of ${day(tot.navDate)}` : "" },
+          { k: "Gain", v: valued ? money(tot.gain) : "—", sub: valued ? `${ret.label} ${percent(ret.value)}` : "", tone: gainTone(tot.gain) },
+          { k: "Invested", v: money(tot.cost + unmatchedInvested), sub: unmatchedInvested ? "Includes schemes not matched yet" : "Cost of units held" },
+          { k: "SIPs", v: money(monthly), sub: `${active.length} active · per month` },
+        ].map((x) => (
+          <Card key={x.k} className="!p-5">
+            <p className="text-[13px] font-semibold tracking-wide text-muted uppercase">{x.k}</p>
+            <p className={`mt-1 text-[22px] font-semibold tabular-nums ${x.tone ?? ""}`}>{x.v}</p>
+            {x.sub && <p className="text-[13px] text-muted">{x.sub}</p>}
           </Card>
         ))}
       </div>
+
+      <Card className="!p-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-5 pt-5 pb-2">
+          <h2 className="text-lg font-semibold">Holdings</h2>
+          {tot.pendingUnits > 0 && <p className="text-sm text-muted">{tot.pendingUnits} entries waiting for their NAV</p>}
+        </div>
+        {c.holdings.length === 0 && c.unmatched.length === 0 ? (
+          <p className="px-5 pb-5 text-muted">No holdings yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-[15px]">
+              <thead>
+                <tr className="border-b border-line text-left text-[13px] font-semibold tracking-wide text-muted uppercase">
+                  <th className="px-5 py-2">Scheme</th>
+                  <th className="px-3 py-2 text-right">Units</th>
+                  <th className="px-3 py-2 text-right">Invested</th>
+                  <th className="px-3 py-2 text-right">Value</th>
+                  <th className="px-5 py-2 text-right">Gain</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {c.holdings.map((h) => {
+                  const r = shownReturn(h);
+                  return (
+                    <tr key={h.instrumentId}>
+                      <td className="px-5 py-3">
+                        <p className="font-semibold leading-snug">{h.name}</p>
+                        <p className="text-[13px] text-muted">
+                          NAV {navText(h.nav)} · {day(h.navDate)}
+                          {h.estimated ? " · units estimated from NAV" : ""}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">{units(h.units)}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{money(h.cost)}</td>
+                      <td className="px-3 py-3 text-right font-semibold tabular-nums">{h.value === null ? "—" : money(h.value)}</td>
+                      <td className={`px-5 py-3 text-right tabular-nums ${gainTone(h.gain)}`}>
+                        {h.gain === null ? "—" : money(h.gain)}
+                        <p className="text-[13px]">
+                          {r.label} {percent(r.value)}
+                        </p>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {c.unmatched.map((u) => (
+                  <tr key={`u:${u.scheme}`}>
+                    <td className="px-5 py-3">
+                      <p className="font-semibold leading-snug">{u.scheme}</p>
+                      <Link to="/app/schemes" className="text-[13px] font-semibold text-bronze underline">
+                        Match this scheme to see its value
+                      </Link>
+                    </td>
+                    <td className="px-3 py-3 text-right text-muted">—</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{money(u.netInvested)}</td>
+                    <td className="px-3 py-3 text-right text-muted">—</td>
+                    <td className="px-5 py-3 text-right text-muted">—</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <div className="grid gap-5 lg:grid-cols-3">
         <Card>
@@ -165,7 +234,10 @@ function ClientPage() {
                 </div>
                 <div className="text-right">
                   <p className="font-semibold tabular-nums">{money(t.amount)}</p>
-                  <p className="text-sm text-muted">{txnType(t.type)}</p>
+                  <p className="text-sm text-muted">
+                    {txnType(t.type)}
+                    {t.units !== null ? ` · ${t.unitsEstimated ? "≈ " : ""}${units(t.units)} u` : ""}
+                  </p>
                 </div>
               </li>
             ))}

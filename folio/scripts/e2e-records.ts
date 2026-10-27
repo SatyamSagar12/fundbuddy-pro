@@ -103,7 +103,7 @@ try {
   await go(p, "/app/sips");
   await p.getByRole("button", { name: "Add SIP" }).click();
   await p.getByLabel("Client", { exact: true }).first().selectOption({ label: "Ramesh Kumar" });
-  await p.getByLabel("Scheme name").fill("ICICI Bluechip Fund");
+  await p.getByLabel("Scheme", { exact: true }).fill("ICICI Bluechip Fund");
   await p.getByLabel("SIP amount (₹)").fill("5000");
   await p.getByRole("button", { name: "Save" }).click();
   await p.getByText("SIP added.").waitFor();
@@ -117,7 +117,7 @@ try {
   ] as const) {
     await p.getByRole("button", { name: "Add investment" }).click();
     await p.getByLabel("Client", { exact: true }).first().selectOption({ label: "Ramesh Kumar" });
-    await p.getByLabel("Scheme name").fill(scheme);
+    await p.getByLabel("Scheme", { exact: true }).fill(scheme);
     await p.getByLabel("Type").selectOption(type);
     await p.getByLabel("Amount (₹)").fill(amount);
     await p.getByLabel("Date").fill(date);
@@ -135,7 +135,7 @@ try {
   // ── Client page shows both ────────────────────────────────────────────────
   await go(p, "/app/clients");
   await p.getByRole("link", { name: "Ramesh Kumar" }).click();
-  await p.getByText("HDFC Flexi Cap Fund").waitFor();
+  await p.getByText("HDFC Flexi Cap Fund", { exact: true }).waitFor();
   check(await p.getByText("₹1,55,000").first().isVisible(), "client page lists the client's investments and totals");
 
   // ── Reports ───────────────────────────────────────────────────────────────

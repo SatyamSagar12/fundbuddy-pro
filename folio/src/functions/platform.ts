@@ -13,6 +13,7 @@ import { audit } from "@/server/security";
 import { emailWorks, sendMail } from "@/server/mailer";
 import { appUrl } from "@/server/env";
 import { PLANS, PLAN_IDS, isPlanId, type PlanId } from "@/lib/plans";
+import { navStatus, runNavJobs } from "@/server/nav";
 
 async function ownerOf(practiceId: string) {
   const [o] = await db()
@@ -80,6 +81,7 @@ export const getPlatform = createServerFn({ method: "GET" }).handler(async () =>
     pending,
     unconfirmed,
     emailReady: emailWorks(),
+    nav: await navStatus(),
     practices: list.map(({ billing, ...r }) => ({ ...r, state: billing.state, endsAt: billing.endsAt })),
   };
 });
@@ -216,3 +218,15 @@ export const approveUser = createServerFn({ method: "POST" })
     });
     return { ok: true as const };
   });
+
+/** Imports today's AMFI NAVs and fills units now, instead of waiting for the next automatic run. */
+export const importNavsNow = createServerFn({ method: "POST" }).handler(async () => {
+  const admin = await requirePlatformAdmin();
+  try {
+    const r = await runNavJobs();
+    await audit(null, admin.userId, "platform.nav_import", { meta: r });
+    return { ok: true as const, ...r };
+  } catch (e) {
+    return { ok: false as const, error: `Import failed: ${e instanceof Error ? e.message : String(e)}` };
+  }
+});

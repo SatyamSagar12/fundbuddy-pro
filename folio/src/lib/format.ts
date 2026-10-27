@@ -21,3 +21,25 @@ const TYPE_LABEL: Record<string, string> = {
 export function txnType(type: string): string {
   return TYPE_LABEL[type] ?? type;
 }
+
+/** 0.1234 → "12.3%"; null → "—". */
+export function percent(value: number | null | undefined, digits = 1): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+export function units(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return value.toLocaleString("en-IN", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+
+export function navText(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return `₹${value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+}
+
+/** Gains in green, losses in red. */
+export function gainTone(value: number | null | undefined): string {
+  if (!value) return "";
+  return value > 0 ? "text-good" : "text-bad";
+}

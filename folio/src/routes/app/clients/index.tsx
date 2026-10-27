@@ -5,6 +5,7 @@ import { listClients } from "@/functions/practice";
 import { assignClient, getTeam } from "@/functions/team";
 import { Card, linkButton, PageHeader } from "@/components/ui";
 import { Plus } from "lucide-react";
+import { money } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
 
 export const Route = createFileRoute("/app/clients/")({
@@ -41,7 +42,7 @@ function ClientsPage() {
                 onClick={() =>
                   void downloadCsv(
                     "clients.csv",
-                    clients.map((c) => ({ Name: c.name, Mobile: c.mobile ?? "", Email: c.email ?? "", PAN: c.pan ?? "", ActiveSIPs: c.activeSips })),
+                    clients.map((c) => ({ Name: c.name, Mobile: c.mobile ?? "", Email: c.email ?? "", PAN: c.pan ?? "", ActiveSIPs: c.activeSips, CurrentValue: c.value ?? "" })),
                   )
                 }
               >
@@ -88,9 +89,12 @@ function ClientsPage() {
                   </p>
                 </Link>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="hidden text-sm text-muted sm:inline">
-                    {c.activeSips > 0 ? `${c.activeSips} active SIP${c.activeSips > 1 ? "s" : ""}` : ""}
-                  </span>
+                  <div className="text-right">
+                    {c.value !== null && <p className="font-semibold tabular-nums">{money(c.value)}</p>}
+                    <p className="hidden text-sm text-muted sm:block">
+                      {c.activeSips > 0 ? `${c.activeSips} active SIP${c.activeSips > 1 ? "s" : ""}` : ""}
+                    </p>
+                  </div>
                   {canAssign && (
                     <select
                       aria-label={`Who handles ${c.name}`}

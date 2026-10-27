@@ -36,6 +36,13 @@
       "when": 1793077319470,
       "tag": "0004_optional_authenticator",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793102206309,
+      "tag": "0005_nav_engine",
+      "breakpoints": true
     }
   ]
 }

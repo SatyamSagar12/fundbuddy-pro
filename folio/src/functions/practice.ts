@@ -7,6 +7,8 @@ import { withPractice } from "@/server/db/scope";
 import { auditLog, families, investors, practices, sips, transactions, users } from "@/server/db/schema";
 import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 import { addSampleData, removeSampleData } from "@/server/sample-data";
+import { combine, loadHoldings, unmatchedSchemeNames } from "@/server/valuation";
+import { confidentScheme, fillUnitsSoon, linkScheme } from "@/server/schemes";
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const m = await requireMember();
@@ -38,7 +40,11 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       .select({ n: sql<number>`count(*)::int` })
       .from(investors)
       .where(sql`${investors.legacyId} like 'sample:%'`);
+    const total = combine(await loadHoldings(tx));
+    const unmatched = (await unmatchedSchemeNames(tx)).length;
     return {
+      total,
+      unmatched,
       hasSample: (sample?.n ?? 0) > 0,
       canRemoveSample: m.role !== "subbroker",
       clients: clients?.n ?? 0,
@@ -91,10 +97,15 @@ export const listClients = createServerFn({ method: "GET" })
             .groupBy(sips.investorId)
         : [];
       const sipCount = new Map(counts.map((c) => [c.investorId, c.n]));
+      const value = new Map<string, number>();
+      if (ids.length) {
+        for (const h of await loadHoldings(tx)) value.set(h.investorId, (value.get(h.investorId) ?? 0) + (h.value ?? 0));
+      }
       return rows.map((r) => ({
         ...r,
         pan: r.taxIdLast4 ? `XXXXXX${r.taxIdLast4}` : null,
         activeSips: sipCount.get(r.id) ?? 0,
+        value: value.has(r.id) ? Math.round(value.get(r.id)!) : null,
       }));
     });
   });
@@ -162,6 +173,17 @@ export const updatePractice = createServerFn({ method: "POST" })
 export const addSample = createServerFn({ method: "POST" }).handler(async () => {
   const m = await requireMember(["owner", "staff", "subbroker"]);
   const added = await addSampleData(scopeOf(m), await cryptoFor(m.practiceId), m.role === "subbroker" ? m.userId : null);
+  // Link the sample schemes that match an AMFI scheme exactly; the others show how "Match schemes" works.
+  const names = await withPractice(scopeOf(m), (tx) => unmatchedSchemeNames(tx));
+  let linked = 0;
+  for (const n of names) {
+    const id = await confidentScheme(n.scheme);
+    if (id) {
+      await linkScheme(scopeOf(m), n.scheme, id);
+      linked++;
+    }
+  }
+  if (linked) await fillUnitsSoon(m.practiceId);
   await withPractice(m.practiceId, (tx) =>
     tx.insert(auditLog).values({ practiceId: m.practiceId, userId: m.userId, action: "sample.added", meta: { clients: added } }),
   );

@@ -5,6 +5,7 @@ import {
   decidePayment,
   extendTrial,
   getPlatform,
+  importNavsNow,
   recordPayment,
   resetUserAuthenticator,
   setPracticeStatus,
@@ -97,6 +98,20 @@ function PlatformPage() {
           </ul>
         </Card>
       )}
+
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">NAV data (AMFI)</h2>
+          <p className="text-[15px] text-muted">
+            {d.nav.schemes.toLocaleString("en-IN")} schemes · {d.nav.tracked} with history ·{" "}
+            {d.nav.lastImport ? `NAV date ${d.nav.lastImport.navDate ?? "—"}, imported ${new Date(d.nav.lastImport.at).toLocaleString("en-IN")}` : "never imported"}
+            {d.nav.pendingUnits ? ` · ${d.nav.pendingUnits} entries waiting for units` : ""}
+          </p>
+        </div>
+        <Button variant="secondary" disabled={busy} onClick={() => void run(() => importNavsNow(), "NAVs imported.")}>
+          Import NAVs now
+        </Button>
+      </Card>
 
       <Card className="!p-0">
         <h2 className="px-5 pt-5 pb-2 text-lg font-semibold">UPI payments to check ({d.pending.length})</h2>

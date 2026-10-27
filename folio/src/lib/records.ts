@@ -69,9 +69,13 @@ export const PAYMENT_MODES = [
   { value: "mandate", label: "Mandate (NACH)" },
 ] as const;
 
+/** The AMFI scheme picked from the list; empty when only a name was typed. */
+const instrumentId = z.literal("").or(z.uuid()).default("");
+
 export const investmentSchema = z.object({
   investorId: z.uuid({ message: "Choose a client." }),
   scheme: z.string().trim().min(2, "Enter the scheme name.").max(160),
+  instrumentId,
   type: z.enum(["purchase", "sip", "redemption"]),
   amount: z.coerce.number().positive("Amount must be more than 0.").max(1e11),
   date: date,
@@ -93,6 +97,7 @@ export const SIP_STATUSES = [
 export const sipSchema = z.object({
   investorId: z.uuid({ message: "Choose a client." }),
   scheme: z.string().trim().min(2, "Enter the scheme name.").max(160),
+  instrumentId,
   amount: z.coerce.number().positive("Amount must be more than 0.").max(1e10),
   frequency: z.enum(["monthly", "quarterly"]),
   startDate: date,

@@ -1,11 +1,12 @@
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { clientOptions, deleteInvestment, listInvestments, saveInvestment } from "@/functions/ledger";
-import { Button, Card, Field, Notice, PageHeader, SelectField } from "@/components/ui";
+import { Button, Card, Field, linkButtonSecondary, Notice, PageHeader, SelectField } from "@/components/ui";
+import { SchemePicker } from "@/components/scheme-picker";
 import { INVESTMENT_TYPES, investmentSchema, PAYMENT_MODES, todayIst, type InvestmentForm } from "@/lib/records";
-import { day, money, txnType } from "@/lib/format";
+import { day, money, navText, txnType, units } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
 import { firstIssue, SOMETHING_WRONG } from "@/lib/errors";
 
@@ -45,7 +46,12 @@ function InvestmentsPage() {
         title="Investments"
         subtitle={`${rows.length} ${rows.length === 1 ? "entry" : "entries"} · ${money(total)} net`}
         action={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {rows.some((r) => !r.instrumentId) && (
+              <Link to="/app/schemes" className={linkButtonSecondary}>
+                Match schemes
+              </Link>
+            )}
             {rows.length > 0 && (
               <Button
                 variant="secondary"
@@ -82,10 +88,11 @@ function InvestmentsPage() {
           clients={clients}
           initial={
             editing === "new"
-              ? { investorId: search.client ?? "", scheme: "", type: "purchase", amount: 0, date: todayIst(), paymentMode: "online", reference: "" }
+              ? { investorId: search.client ?? "", scheme: "", instrumentId: "", type: "purchase", amount: 0, date: todayIst(), paymentMode: "online", reference: "" }
               : {
                   investorId: editing.investorId,
                   scheme: editing.scheme ?? "",
+                  instrumentId: editing.instrumentId ?? "",
                   type: editing.type as InvestmentForm["type"],
                   amount: editing.amount,
                   date: editing.date,
@@ -128,6 +135,14 @@ function InvestmentsPage() {
                     {r.paymentMode ? ` · ${r.paymentMode}` : ""}
                     {r.reference ? ` · ${r.reference}` : ""}
                   </p>
+                  {r.units !== null ? (
+                    <p className="text-[13px] text-muted">
+                      {r.unitsEstimated ? "≈ " : ""}
+                      {units(r.units)} units at {navText(r.nav)}
+                    </p>
+                  ) : !r.instrumentId ? (
+                    <p className="text-[13px] text-bronze">Scheme not matched yet</p>
+                  ) : null}
                 </div>
                 <div className="text-right">
                   <p className="font-semibold tabular-nums">{money(r.amount)}</p>
@@ -177,7 +192,7 @@ function InvestmentEditor({
     setError(null);
     try {
       const res = await saveInvestment({ data: { id, investment: parsed.data } });
-      if (res.ok) await onDone(id ? "Investment updated." : "Investment added.");
+      if (res.ok) await onDone(`${id ? "Investment updated." : "Investment added."}${res.matched ? "" : " The scheme isn't matched yet: match it under Investments → Match schemes."}`);
       else setError(res.error);
     } catch (err) {
       setError(firstIssue(err) ?? SOMETHING_WRONG);
@@ -193,7 +208,7 @@ function InvestmentEditor({
         {error && <Notice tone="error">{error}</Notice>}
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField label="Client" name="investorId" defaultValue={initial.investorId} placeholder="Choose a client" options={clients.map((c) => ({ value: c.id, label: c.name }))} />
-          <Field label="Scheme name" name="scheme" defaultValue={initial.scheme} placeholder="e.g. HDFC Flexi Cap Fund" />
+          <SchemePicker initialName={initial.scheme} initialId={initial.instrumentId || null} />
           <SelectField label="Type" name="type" defaultValue={initial.type} options={INVESTMENT_TYPES} />
           <Field label="Amount (₹)" name="amount" type="number" min={1} step="0.01" inputMode="decimal" defaultValue={initial.amount || ""} />
           <Field label="Date" name="date" type="date" defaultValue={initial.date} />

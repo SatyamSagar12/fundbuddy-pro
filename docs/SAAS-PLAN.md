@@ -144,6 +144,9 @@ Parsing rules:
 - Then every holding is revalued. Each morning the advisor sees: current value, invested, gain, XIRR, and the
   day's change. Values are per scheme, folio, client and family.
 - Weekends and holidays use the last NAV, labelled with its date. The NAV date is always shown.
+- **As built:** Cloudflare Pages has no cron, so the import runs in the background after a page request once
+  the last one is 6 hours old. Every scheme's latest NAV is kept; day-by-day history only for schemes in use
+  (backfilled from mfapi.in). That keeps the database small enough for Supabase Free.
 
 ### 3.3 Client CAS import (onboarding in one step)
 
@@ -375,7 +378,7 @@ Father's data migration:
 |---|---|---|
 | 0 | Lock down current app (section 0) | 15 min, today |
 | 1 | Environment (Cloudflare Workers + Postgres in Mumbai + Hyperdrive + CI), sign-up, optional authenticator + recovery codes, password reset, practices + RLS, encryption, team and sub-brokers, UPI billing, platform console, father's data import. **Done**: see `folio/README.md` | 2 weeks |
-| 2 | Scheme master + daily NAV, valuation, XIRR; CAMS/KFintech file parsers (upload); CAS PDF import | 2 weeks |
+| 2 | Scheme master + daily NAV, valuation, XIRR (**done**: see `folio/README.md`); CAMS/KFintech file parsers (upload); CAS PDF import | 2 weeks |
 | 3 | Forwarding address + automatic ingest; SIP book; morning briefing (app + WhatsApp/email) | 1–2 weeks |
 | 4 | Branded PDF reports, monthly auto-statements, client portal (OTP), capital gains | 2 weeks |
 | — | **Beta with father + 5–10 MFDs he knows** | |

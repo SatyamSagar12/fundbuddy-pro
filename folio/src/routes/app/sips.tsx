@@ -4,6 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { clientOptions, deleteSip, listSips, saveSip } from "@/functions/ledger";
 import { Button, Card, Field, Notice, PageHeader, SelectField } from "@/components/ui";
+import { SchemePicker } from "@/components/scheme-picker";
 import { SIP_FREQUENCIES, SIP_STATUSES, sipSchema, todayIst, type SipForm } from "@/lib/records";
 import { day, money } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
@@ -84,10 +85,11 @@ function SipsPage() {
           id={editing === "new" ? undefined : editing.id}
           initial={
             editing === "new"
-              ? { investorId: search.client ?? "", scheme: "", amount: 0, frequency: "monthly", startDate: todayIst(), status: "active" }
+              ? { investorId: search.client ?? "", scheme: "", instrumentId: "", amount: 0, frequency: "monthly", startDate: todayIst(), status: "active" }
               : {
                   investorId: editing.investorId,
                   scheme: editing.scheme ?? "",
+                  instrumentId: editing.instrumentId ?? "",
                   amount: editing.amount,
                   frequency: editing.frequency as SipForm["frequency"],
                   startDate: editing.startDate,
@@ -188,7 +190,7 @@ function SipEditor({
         {error && <Notice tone="error">{error}</Notice>}
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField label="Client" name="investorId" defaultValue={initial.investorId} placeholder="Choose a client" options={clients.map((c) => ({ value: c.id, label: c.name }))} />
-          <Field label="Scheme name" name="scheme" defaultValue={initial.scheme} placeholder="e.g. ICICI Bluechip Fund" />
+          <SchemePicker initialName={initial.scheme} initialId={initial.instrumentId || null} />
           <Field label="SIP amount (₹)" name="amount" type="number" min={1} step="0.01" inputMode="decimal" defaultValue={initial.amount || ""} />
           <SelectField label="Frequency" name="frequency" defaultValue={initial.frequency} options={SIP_FREQUENCIES} />
           <Field label="Start date" name="startDate" type="date" defaultValue={initial.startDate} />

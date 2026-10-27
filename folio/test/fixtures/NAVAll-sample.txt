@@ -1,0 +1,28 @@
+Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Net Asset Value;Date
+
+Open Ended Schemes(Equity Scheme - Flexi Cap Fund)
+
+HDFC Mutual Fund
+
+9900101;INF179K01608;-;HDFC Flexi Cap Fund - Growth Plan;1876.5430;24-Oct-2026
+9900102;INF179K01UT0;-;HDFC Flexi Cap Fund - Growth Option - Direct Plan;2010.1200;24-Oct-2026
+9900103;INF179K01616;INF179K01624;HDFC Flexi Cap Fund - IDCW Plan;61.2200;24-Oct-2026
+
+PPFAS Mutual Fund
+
+9900201;INF879O01019;-;Parag Parikh Flexi Cap Fund - Regular Plan - Growth;84.1234;24-Oct-2026
+9900202;INF879O01027;-;Parag Parikh Flexi Cap Fund - Direct Plan - Growth;92.5000;24-Oct-2026
+
+Open Ended Schemes(Debt Scheme - Liquid Fund)
+
+Aditya Birla Sun Life Mutual Fund
+
+9900301;INF209K01VA3;INF209K01VB1;Aditya Birla Sun Life Liquid Fund - Regular Plan - Daily IDCW;100.1500;24-Oct-2026
+9900302;INF209K01VF2;-;Aditya Birla Sun Life Liquid Fund - Regular Plan - Growth;421.3300;24-Oct-2026
+9900303;-;-;Aditya Birla Sun Life Liquid Fund - Retail Plan - Growth;N.A.;24-Oct-2026
+
+Close Ended Schemes(Income)
+
+Old Mutual Fund
+
+9900401;INF000000000;-;Old Fixed Maturity Plan Series 1 - Growth;12.0000;03-Jan-2020

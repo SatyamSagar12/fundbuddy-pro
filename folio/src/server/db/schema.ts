@@ -226,10 +226,25 @@ export const instruments = pgTable(
     /** growth | idcw_payout | idcw_reinvest */
     option: text("option"),
     active: boolean("active").notNull().default(true),
+    /** "Open Ended", "Close Ended" or "Interval Fund", from the AMFI file. */
+    schemeType: text("scheme_type"),
+    /** Latest NAV from the daily AMFI file (every scheme). Day-by-day history is kept only for schemes in use. */
+    latestNav: numeric("latest_nav", { precision: 18, scale: 6 }),
+    latestNavDate: date("latest_nav_date"),
+    /** NAV history is stored from this date on; null means the scheme isn't tracked yet (no client holds it). */
+    historyFrom: date("history_from"),
     createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [uniqueIndex("instruments_amfi_code_key").on(t.amfiCode), index("instruments_isin_idx").on(t.isin)],
 );
+
+/** Small key/value state for system jobs (e.g. when NAVs were last imported). Owner only. */
+export const marketState = pgTable("market_state", {
+  key: text("key").primaryKey(),
+  value: text("value"),
+  updatedAt: updatedAt(),
+});
 
 export const navPrices = pgTable(
   "nav_prices",
@@ -331,6 +346,8 @@ export const transactions = pgTable(
     currency: char("currency", { length: 3 }).notNull().default("INR"),
     units: numeric("units", { precision: 20, scale: 4 }),
     nav: numeric("nav", { precision: 18, scale: 6 }),
+    /** Units worked out from the day's NAV (entered by hand). Registrar files give exact units instead. */
+    unitsEstimated: boolean("units_estimated").notNull().default(false),
     paymentMode: text("payment_mode"),
     reference: text("reference"),
     /** manual | legacy | cams | kfintech | cas */
@@ -341,6 +358,7 @@ export const transactions = pgTable(
   },
   (t) => [
     index("transactions_investor_idx").on(t.practiceId, t.investorId, t.tradeDate),
+    index("transactions_instrument_idx").on(t.instrumentId),
     uniqueIndex("transactions_source_key").on(t.practiceId, t.source, t.sourceTxnId),
   ],
 );

@@ -7,6 +7,13 @@ import { investors, sips, transactions } from "@/server/db/schema";
 import { requireMember, scopeOf } from "@/server/member";
 import { audit } from "@/server/security";
 import { investmentSchema, sipSchema } from "@/lib/records";
+import { confidentScheme, fillUnitsSoon, schemeExists } from "@/server/schemes";
+
+/** The scheme to link: the one picked, else a certain match for the typed name, else none (match it later). */
+async function resolveScheme(instrumentId: string, typed: string): Promise<string | null> {
+  if (instrumentId) return (await schemeExists(instrumentId))?.id ?? null;
+  return confidentScheme(typed).catch(() => null);
+}
 
 const filter = z.object({ client: z.uuid().optional() });
 const idInput = z.object({ id: z.uuid() });
@@ -30,8 +37,12 @@ export const listInvestments = createServerFn({ method: "GET" })
           investorId: transactions.investorId,
           client: investors.name,
           scheme: transactions.schemeText,
+          instrumentId: transactions.instrumentId,
           type: transactions.type,
           amount: transactions.amount,
+          units: transactions.units,
+          nav: transactions.nav,
+          unitsEstimated: transactions.unitsEstimated,
           date: transactions.tradeDate,
           paymentMode: transactions.paymentMode,
           reference: transactions.reference,
@@ -43,7 +54,12 @@ export const listInvestments = createServerFn({ method: "GET" })
         .orderBy(desc(transactions.tradeDate), desc(transactions.createdAt))
         .limit(2000),
     );
-    return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+    return rows.map((r) => ({
+      ...r,
+      amount: Number(r.amount),
+      units: r.units === null ? null : Number(r.units),
+      nav: r.nav === null ? null : Number(r.nav),
+    }));
   });
 
 export const saveInvestment = createServerFn({ method: "POST" })
@@ -51,14 +67,20 @@ export const saveInvestment = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const m = await requireMember();
     const i = data.investment;
+    const instrumentId = await resolveScheme(i.instrumentId, i.scheme);
     const row = {
       investorId: i.investorId,
       schemeText: i.scheme,
+      instrumentId,
       type: i.type,
       amount: i.amount.toFixed(2),
       tradeDate: i.date,
       paymentMode: i.paymentMode,
       reference: i.reference || null,
+      // Worked out again from the scheme's NAV on that date (below, and by the daily job).
+      units: null,
+      nav: null,
+      unitsEstimated: false,
     };
     const saved = await withPractice(scopeOf(m), async (tx) => {
       // The client must be one this person can see (row-level security hides the rest).
@@ -77,7 +99,8 @@ export const saveInvestment = createServerFn({ method: "POST" })
     });
     if (!saved.length) return { ok: false as const, error: data.id ? "This entry can't be edited." : "Client not found." };
     await audit(m.practiceId, m.userId, data.id ? "investment.updated" : "investment.created", { target: saved[0]!.id });
-    return { ok: true as const };
+    if (instrumentId) await fillUnitsSoon(m.practiceId);
+    return { ok: true as const, matched: !!instrumentId };
   });
 
 export const deleteInvestment = createServerFn({ method: "POST" })
@@ -103,6 +126,7 @@ export const listSips = createServerFn({ method: "GET" })
           investorId: sips.investorId,
           client: investors.name,
           scheme: sips.schemeText,
+          instrumentId: sips.instrumentId,
           amount: sips.amount,
           frequency: sips.frequency,
           startDate: sips.startDate,
@@ -125,6 +149,7 @@ export const saveSip = createServerFn({ method: "POST" })
     const row = {
       investorId: s.investorId,
       schemeText: s.scheme,
+      instrumentId: await resolveScheme(s.instrumentId, s.scheme),
       amount: s.amount.toFixed(2),
       frequency: s.frequency,
       startDate: s.startDate,

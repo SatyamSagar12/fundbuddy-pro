@@ -4,6 +4,7 @@
  *
  *   POST /__maintenance/migrate          Authorization: Bearer <MIGRATE_TOKEN>
  *   POST /__maintenance/approve-admin    Authorization: Bearer <MIGRATE_TOKEN>
+ *   POST /__maintenance/nav              Authorization: Bearer <MIGRATE_TOKEN>   (import today's NAVs now)
  *
  * Without a MIGRATE_TOKEN secret these answer 404. Migrations are recorded in the same table and format as
  * drizzle-kit's migrator (`drizzle.__drizzle_migrations`), so both ways of migrating agree.
@@ -12,6 +13,7 @@ import { and, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { db } from "./db/client";
 import { users } from "./db/schema";
 import journal from "../../db/migrations/meta/_journal.json";
+import { runNavJobs } from "./nav";
 
 const files = import.meta.glob("../../db/migrations/*.sql", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
@@ -100,6 +102,7 @@ export async function maintenance(
   try {
     if (task === "migrate") return json({ applied: await migrate() });
     if (task === "approve-admin") return json({ approved: await approveAdmins(env.PLATFORM_ADMIN_EMAILS ?? "") });
+    if (task === "nav") return json(await runNavJobs());
     return json({ error: "unknown task" }, 404);
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);

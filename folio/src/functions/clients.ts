@@ -12,6 +12,7 @@ import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 import { billingFor } from "@/server/billing";
 import { audit } from "@/server/security";
 import { normaliseTaxId } from "@/server/crypto";
+import { combine, loadHoldings, loadUnmatched } from "@/server/valuation";
 import { clientSchema, EMPTY_CLIENT, type ClientForm } from "@/lib/records";
 
 type Bank = { accountNo: string | null; bankName: string | null; ifsc: string | null; micr: string | null; branch: string | null };
@@ -55,8 +56,11 @@ export const getClient = createServerFn({ method: "GET" })
         .select({
           id: transactions.id,
           scheme: transactions.schemeText,
+          instrumentId: transactions.instrumentId,
           type: transactions.type,
           amount: transactions.amount,
+          units: transactions.units,
+          unitsEstimated: transactions.unitsEstimated,
           date: transactions.tradeDate,
           paymentMode: transactions.paymentMode,
           reference: transactions.reference,
@@ -76,11 +80,16 @@ export const getClient = createServerFn({ method: "GET" })
         .from(sips)
         .where(eq(sips.investorId, c.id))
         .orderBy(desc(sips.startDate));
+      const holdings = await loadHoldings(tx, c.id);
+      const unmatched = await loadUnmatched(tx, c.id);
       return {
+        holdings: holdings.map(({ flows: _f, ...h }) => h),
+        total: combine(holdings),
+        unmatched,
         id: c.id,
         form,
         createdAt: c.createdAt,
-        transactions: txns.map((t) => ({ ...t, amount: Number(t.amount) })),
+        transactions: txns.map((t) => ({ ...t, amount: Number(t.amount), units: t.units === null ? null : Number(t.units) })),
         sips: clientSips.map((s) => ({ ...s, amount: Number(s.amount) })),
         canDelete: m.role !== "subbroker",
       };

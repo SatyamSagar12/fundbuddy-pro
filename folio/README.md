@@ -1,7 +1,7 @@
 # Anqulas Folio
 
-Back office for mutual fund distributors: clients, families, folios, SIPs and, next, automatic CAMS/KFintech
-mailback import and daily NAVs. Product plan: [`../docs/SAAS-PLAN.md`](../docs/SAAS-PLAN.md).
+Back office for mutual fund distributors: clients, families, folios, SIPs, daily AMFI NAVs with current value,
+gains and XIRR, and, next, automatic CAMS/KFintech mailback import. Product plan: [`../docs/SAAS-PLAN.md`](../docs/SAAS-PLAN.md).
 
 This folder is a separate app from the old FundVault Lite app at the repo root. The root app keeps serving your
 father until the switch-over. Changes here never rebuild or redeploy it: the old workflows ignore `folio/**`.
@@ -98,6 +98,43 @@ Not in phase 1:
 - PhonePe or PayPal checkout (manual UPI only for now).
 - GST invoices (decide GST with your CA first).
 
+## Phase 2 so far: NAVs and valuation
+
+- **Daily NAVs.** Every scheme's name, codes, category and latest NAV come from AMFI's daily file
+  (`NAVAll.txt`, about 15,000 schemes). Only changed rows are written.
+  - When: in the background after any page request, once the last import is over 6 hours old. Only one app
+    instance does it at a time; a failed try is retried after an hour.
+  - On demand: `/platform` → **Import NAVs now**, or `POST /__maintenance/nav` with the `MIGRATE_TOKEN`.
+  - A short or broken download is refused, so yesterday's NAVs stay.
+- **NAV history.** Kept only for schemes clients hold. The first time a scheme is used, its history is downloaded
+  from mfapi.in from the earliest entry on; after that the daily file adds each day's NAV.
+- **Scheme picker.** The scheme field on Investments and SIPs searches AMFI schemes as you type. A typed name
+  that exactly matches one scheme is linked when saved. A regular-plan growth option ranks first unless the name
+  says direct or IDCW.
+- **Match schemes** (`/app/schemes`, linked from Home and Investments).
+  - Lists every typed scheme name not linked yet, largest first, with suggestions.
+  - **Use all exact matches** links the certain ones in one click.
+  - Renamed schemes (e.g. "ICICI Prudential Bluechip Fund" → "Large Cap Fund") are suggested by their new
+    name; any other scheme can be searched.
+- **Units.** An entry linked to a scheme gets units = amount ÷ that day's NAV (or the next day with a NAV), less
+  the 0.005% stamp duty on purchases since July 2020. They are marked "≈" (estimated); registrar files will give
+  exact units.
+- **Value, gain and return.**
+  - Holdings use the latest NAV, with average cost for redemptions.
+  - XIRR is shown once money has been invested for a year; before that, the plain return.
+  - On Home: total current value and gain. On Clients: each client's value. On a client's page: a holdings
+    table, with unmatched schemes listed at their invested amount.
+
+Still to come in phase 2: CAMS and KFintech mailback files, and CAS PDF import. These need sample files to build
+against.
+
+Local NAV data without internet:
+
+```sh
+npx tsx scripts/nav-import.ts --file <a NAVAll.txt> --synthetic-history   # made-up history, local database only
+npx tsx scripts/e2e-nav.ts                                                # browser test of phase 2
+```
+
 ## Stack
 
 | Part | What |
@@ -157,8 +194,8 @@ row-level security in a custom migration (`npx drizzle-kit generate --custom --n
   does it on demand.
 - **First admin:** the first sign-up with an email in `PLATFORM_ADMIN_EMAILS` is approved at once, but only while
   no admin account exists. Later sign-ups wait for approval in `/platform` until an email service is set up.
-- **Not on Pages:** scheduled jobs. Hourly housekeeping doesn't run there; the daily NAV import (phase 2) will need
-  the Worker route below, or a scheduled GitHub Action calling the app.
+- **Not on Pages:** scheduled jobs. Hourly housekeeping doesn't run there. The NAV import doesn't need it: it runs in
+  the background after page requests (see phase 2 above).
 
 ## Putting it online (Cloudflare builds it from GitHub)
 

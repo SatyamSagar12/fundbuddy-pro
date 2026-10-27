@@ -23,6 +23,7 @@ import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppInvestmentsRouteImport } from './routes/app/investments'
 import { Route as AppReportsRouteImport } from './routes/app/reports'
+import { Route as AppSchemesRouteImport } from './routes/app/schemes'
 import { Route as AppSettingsRouteRouteImport } from './routes/app/settings/route'
 import { Route as AppSipsRouteImport } from './routes/app/sips'
 import { Route as DevOutboxRouteImport } from './routes/dev/outbox'
@@ -107,6 +108,11 @@ const AppInvestmentsRoute = AppInvestmentsRouteImport.update({
 const AppReportsRoute = AppReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSchemesRoute = AppSchemesRouteImport.update({
+  id: '/schemes',
+  path: '/schemes',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppSettingsRouteRoute = AppSettingsRouteRouteImport.update({
@@ -200,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRouteRouteWithChildren
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/schemes': typeof AppSchemesRoute
   '/app/sips': typeof AppSipsRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/schemes': typeof AppSchemesRoute
   '/app/sips': typeof AppSipsRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRouteRouteWithChildren
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
+  '/app/schemes': typeof AppSchemesRoute
   '/app/sips': typeof AppSipsRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/investments'
     | '/app/reports'
+    | '/app/schemes'
     | '/app/sips'
     | '/dev/outbox'
     | '/two-factor/setup'
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/app/investments'
     | '/app/reports'
+    | '/app/schemes'
     | '/app/sips'
     | '/dev/outbox'
     | '/two-factor/setup'
@@ -354,6 +365,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/investments'
     | '/app/reports'
+    | '/app/schemes'
     | '/app/sips'
     | '/dev/outbox'
     | '/two-factor/setup'
@@ -490,6 +502,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReportsRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/schemes': {
+      id: '/app/schemes'
+      path: '/schemes'
+      fullPath: '/app/schemes'
+      preLoaderRoute: typeof AppSchemesRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/settings': {
       id: '/app/settings'
       path: '/settings'
@@ -619,6 +638,7 @@ interface AppRouteRouteChildren {
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
   AppInvestmentsRoute: typeof AppInvestmentsRoute
   AppReportsRoute: typeof AppReportsRoute
+  AppSchemesRoute: typeof AppSchemesRoute
   AppSipsRoute: typeof AppSipsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppClientsNewRoute: typeof AppClientsNewRoute
@@ -631,6 +651,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppInvestmentsRoute: AppInvestmentsRoute,
   AppReportsRoute: AppReportsRoute,
+  AppSchemesRoute: AppSchemesRoute,
   AppSipsRoute: AppSipsRoute,
   AppIndexRoute: AppIndexRoute,
   AppClientsNewRoute: AppClientsNewRoute,

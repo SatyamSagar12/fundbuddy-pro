@@ -2,7 +2,8 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { addSample, getDashboard, removeSample } from "@/functions/practice";
 import { Button, Card, linkButtonSecondary } from "@/components/ui";
-import { day, money, txnType } from "@/lib/format";
+import { day, gainTone, money, percent, txnType } from "@/lib/format";
+import { shownReturn } from "@/lib/holdings";
 
 export const Route = createFileRoute("/app/")({
   loader: () => getDashboard(),
@@ -25,11 +26,19 @@ function HomePage() {
       setBusy(false);
     }
   }
+  const t = d.total;
+  const valued = t.value > 0 || t.cost > 0;
+  const working = !valued && t.pendingUnits > 0;
+  const ret = shownReturn(t);
   const stats = [
-    { label: "Clients", value: String(d.clients) },
-    { label: "Active SIPs", value: String(d.activeSips) },
-    { label: "SIP inflow / month", value: money(d.monthlySip) },
-    { label: "Invested (recorded)", value: money(d.invested) },
+    {
+      label: "Current value",
+      value: valued ? money(t.value) : working ? "Working out…" : "—",
+      sub: working ? "Fetching NAVs for new schemes" : t.navDate ? `At NAV of ${day(t.navDate)}` : "Once schemes are matched",
+    },
+    { label: "Gain", value: valued ? money(t.gain) : "—", sub: valued ? `${ret.label} ${percent(ret.value)}` : "", tone: gainTone(t.gain) },
+    { label: "SIP inflow / month", value: money(d.monthlySip), sub: `${d.activeSips} active SIPs` },
+    { label: "Clients", value: String(d.clients), sub: `${money(d.invested)} invested (recorded)` },
   ];
   return (
     <div className="space-y-6">
@@ -42,10 +51,25 @@ function HomePage() {
         {stats.map((s) => (
           <Card key={s.label} className="!p-5">
             <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">{s.label}</p>
-            <p className="mt-1 text-[24px] font-semibold tabular-nums">{s.value}</p>
+            <p className={`mt-1 text-[24px] font-semibold tabular-nums ${s.tone ?? ""}`}>{s.value}</p>
+            {s.sub && <p className="text-[13px] text-muted">{s.sub}</p>}
           </Card>
         ))}
       </div>
+
+      {d.unmatched > 0 && (
+        <Card className="flex flex-wrap items-center justify-between gap-3 !py-4">
+          <p className="text-[15px]">
+            <b>
+              {d.unmatched} scheme {d.unmatched === 1 ? "name isn't" : "names aren't"} matched
+            </b>{" "}
+            to AMFI schemes yet, so {d.unmatched === 1 ? "its" : "their"} value can't be worked out.
+          </p>
+          <Link to="/app/schemes" className="font-semibold whitespace-nowrap text-bronze underline">
+            Match schemes
+          </Link>
+        </Card>
+      )}
 
       {!me.totpEnabled && (
         <Card className="flex flex-wrap items-center justify-between gap-3 !py-4">
