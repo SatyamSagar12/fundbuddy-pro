@@ -143,7 +143,7 @@ try {
   check(owner.codes.length === 10 && /^[A-Z0-9]{5}-[A-Z0-9]{5}$/.test(owner.codes[0]!), "10 recovery codes shown after authenticator setup");
   const [p] = await sql`select p.id from practices p join memberships m on m.practice_id = p.id join users u on u.id = m.user_id where u.email = ${OWNER}`;
   const practiceId = p!["id"] as string;
-  await owner.page.getByText("Good to see you").waitFor();
+  await owner.page.getByText(/Good (morning|afternoon|evening),/).waitFor();
   check(true, "owner reaches Home");
 
   // Two clients, so assignment can be tested.

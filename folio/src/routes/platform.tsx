@@ -48,8 +48,8 @@ function PlatformPage() {
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-8">
       <header>
-        <p className="text-[13px] font-semibold tracking-[0.14em] text-bronze uppercase">Anqulas Folio</p>
-        <h1 className="text-[26px] font-semibold tracking-tight">Platform</h1>
+        <p className="eyebrow reveal text-bronze">Anqulas Folio · Platform console</p>
+        <h1 className="text-[2.25rem] sm:text-[2.875rem]"><span className="line-mask"><span>Platform</span></span></h1>
       </header>
       {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
 
@@ -61,8 +61,8 @@ function PlatformPage() {
           ["Clients", String(d.totals.clients)],
         ].map(([k, v]) => (
           <Card key={k} className="!p-5">
-            <p className="text-[13px] font-semibold tracking-wide text-muted uppercase">{k}</p>
-            <p className="mt-1 text-[24px] font-semibold tabular-nums">{v}</p>
+            <p className="eyebrow text-muted">{k}</p>
+            <p className="mt-2 font-serif text-[2rem] leading-none tracking-[-0.02em]">{v}</p>
           </Card>
         ))}
       </div>
@@ -174,7 +174,7 @@ function PlatformPage() {
                   >
                     <label className="text-sm font-semibold">
                       Extend trial (days)
-                      <input name="days" type="number" min={1} max={90} defaultValue={14} className="mt-1 block min-h-10 w-24 rounded-lg border border-line bg-white px-2" />
+                      <input name="days" type="number" min={1} max={90} defaultValue={14} className="mt-1 block min-h-10 w-24 rounded-lg border border-line bg-field px-2" />
                     </label>
                     <Button type="submit" variant="secondary" disabled={busy}>
                       Extend
@@ -195,7 +195,7 @@ function PlatformPage() {
                   >
                     <label className="text-sm font-semibold">
                       Paid outside the app
-                      <select name="plan" className="mt-1 block min-h-10 rounded-lg border border-line bg-white px-2">
+                      <select name="plan" className="mt-1 block min-h-10 rounded-lg border border-line bg-field px-2">
                         {PLAN_IDS.map((id) => (
                           <option key={id} value={id}>
                             {PLANS[id].name}
@@ -203,11 +203,11 @@ function PlatformPage() {
                         ))}
                       </select>
                     </label>
-                    <select name="months" aria-label="Period" className="min-h-10 rounded-lg border border-line bg-white px-2">
+                    <select name="months" aria-label="Period" className="min-h-10 rounded-lg border border-line bg-field px-2">
                       <option value="1">1 month</option>
                       <option value="12">1 year</option>
                     </select>
-                    <input name="note" placeholder="Note (e.g. bank transfer ref)" className="min-h-10 rounded-lg border border-line bg-white px-2" />
+                    <input name="note" placeholder="Note (e.g. bank transfer ref)" className="min-h-10 rounded-lg border border-line bg-field px-2" />
                     <Button type="submit" variant="secondary" disabled={busy}>
                       Record
                     </Button>

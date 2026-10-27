@@ -44,7 +44,7 @@ function TeamPage() {
         </div>
         <ul className="divide-y divide-line">
           {t.members.map((m) => (
-            <li key={m.userId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+            <li key={m.userId} className="ink-sweep flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
               <div className="min-w-0">
                 <p className="truncate font-semibold">
                   {m.name} {m.isMe && <span className="font-normal text-muted">(you)</span>}
@@ -64,7 +64,7 @@ function TeamPage() {
                       onChange={(e) =>
                         void run(() => updateMember({ data: { userId: m.userId, role: e.target.value as "staff" | "subbroker" } }), "Role changed.")
                       }
-                      className="min-h-10 rounded-lg border border-line bg-white px-2 text-[15px]"
+                      className="min-h-10 rounded-lg border border-line bg-field px-2 text-[15px]"
                     >
                       <option value="staff">Staff</option>
                       <option value="subbroker">Sub-broker</option>
@@ -87,7 +87,7 @@ function TeamPage() {
             </li>
           ))}
           {t.pending.map((i) => (
-            <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+            <li key={i.id} className="ink-sweep flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
               <div className="min-w-0">
                 <p className="truncate font-semibold">{i.email}</p>
                 <p className="text-sm text-muted">

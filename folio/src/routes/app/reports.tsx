@@ -89,8 +89,8 @@ function ReportsPage() {
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {kpis.map((k) => (
           <Card key={k.label} className="!p-5">
-            <p className="text-[13px] font-semibold tracking-wide text-muted uppercase">{k.label}</p>
-            <p className="mt-1 text-[22px] font-semibold tabular-nums">{k.value}</p>
+            <p className="eyebrow text-muted">{k.label}</p>
+            <p className="mt-2 font-serif text-[1.875rem] leading-none tracking-[-0.02em]">{k.value}</p>
             <p className="text-sm text-muted">{k.hint}</p>
           </Card>
         ))}
@@ -103,7 +103,7 @@ function ReportsPage() {
             role="tab"
             aria-selected={view === v}
             onClick={() => setView(v)}
-            className={`-mb-px border-b-2 px-3 py-2.5 text-[15px] font-semibold ${view === v ? "border-ink text-text" : "border-transparent text-muted"}`}
+            className={`-mb-px border-b-2 px-3 py-2.5 text-[15px] font-medium transition-colors ${view === v ? "border-bronze text-text" : "border-transparent text-muted"}`}
           >
             {v === "charts" ? "Charts" : "Table view"}
           </button>

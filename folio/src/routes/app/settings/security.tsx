@@ -78,7 +78,7 @@ function SecurityPage() {
             </p>
             <Link
               to="/two-factor/setup"
-              className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-ink px-5 text-[15px] font-semibold text-paper"
+              className="mt-4 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-[15px] font-medium text-primary-fg"
             >
               Turn on
             </Link>

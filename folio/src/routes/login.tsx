@@ -55,7 +55,7 @@ function LoginPage() {
   }
 
   return (
-    <AuthFrame title="Sign in">
+    <AuthFrame eyebrow="Welcome back" title="Sign in" subtitle="Your clients, their SIPs and today's value of every holding.">
       <form method="post" onSubmit={onSubmit} className="space-y-4" noValidate>
         {error && <Notice tone="error">{error}</Notice>}
         {info && <Notice tone="good">{info}</Notice>}
@@ -73,7 +73,7 @@ function LoginPage() {
         </Button>
         {auth.google && <GoogleButton />}
         <p className="text-center text-[15px]">
-          <Link to="/forgot-password" className="font-semibold text-bronze underline">
+          <Link to="/forgot-password" className="link-draw font-medium text-bronze">
             Forgot password?
           </Link>
         </p>
@@ -84,7 +84,7 @@ function LoginPage() {
         )}
         <p className="text-center text-[15px] text-muted">
           New to Anqulas Folio?{" "}
-          <Link to="/signup" className="font-semibold text-bronze underline">
+          <Link to="/signup" className="link-draw font-medium text-bronze">
             Start a free trial
           </Link>
         </p>

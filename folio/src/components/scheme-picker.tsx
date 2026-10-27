@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { findSchemes } from "@/functions/schemes";
 import { navText } from "@/lib/format";
+import { inputClass } from "@/components/ui";
 
 type Hit = Awaited<ReturnType<typeof findSchemes>>[number];
 
@@ -42,7 +43,7 @@ export function SchemePicker({ initialName, initialId }: { initialName: string; 
 
   return (
     <div className="relative space-y-1.5">
-      <label htmlFor={id} className="block text-[15px] font-semibold">
+      <label htmlFor={id} className="block text-[14px] font-medium">
         Scheme
       </label>
       <input
@@ -54,7 +55,7 @@ export function SchemePicker({ initialName, initialId }: { initialName: string; 
         aria-expanded={open && hits.length > 0}
         aria-controls={`${id}-list`}
         placeholder="Type to search, e.g. HDFC Flexi Cap"
-        className="block min-h-12 w-full rounded-lg border border-line bg-white px-3.5 text-[17px] outline-none transition-colors focus:border-bronze"
+        className={inputClass}
         onChange={(e) => {
           setText(e.target.value);
           setPicked("");
@@ -88,13 +89,13 @@ export function SchemePicker({ initialName, initialId }: { initialName: string; 
         <p className="text-sm text-muted">Pick from the list to track its value. A typed name can be matched later.</p>
       )}
       {open && hits.length > 0 && (
-        <ul id={`${id}-list`} role="listbox" className="absolute z-20 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-line bg-white shadow-lg">
+        <ul id={`${id}-list`} role="listbox" className="absolute z-20 mt-1 max-h-80 w-full overflow-auto rounded-xl bg-card shadow-lg ring-1 ring-line">
           {hits.map((h, i) => (
             <li
               key={h.id}
               role="option"
               aria-selected={i === active}
-              className={`cursor-pointer px-3.5 py-2.5 ${i === active ? "bg-paper" : "hover:bg-paper"}`}
+              className={`cursor-pointer px-3.5 py-2.5 ${i === active ? "bg-soft" : "hover:bg-soft"}`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 choose(h);

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { clientOptions, deleteSip, listSips, saveSip } from "@/functions/ledger";
 import { Button, Card, Field, Notice, PageHeader, SelectField } from "@/components/ui";
 import { SchemePicker } from "@/components/scheme-picker";
+import { ClientAvatar } from "@/components/client-avatar";
 import { SIP_FREQUENCIES, SIP_STATUSES, sipSchema, todayIst, type SipForm } from "@/lib/records";
 import { day, money } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
@@ -122,9 +123,10 @@ function SipsPage() {
         ) : (
           <ul className="divide-y divide-line">
             {rows.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+              <li key={r.id} className="ink-sweep flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <ClientAvatar name={r.client} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{r.client}</p>
+                  <p className="truncate font-medium">{r.client}</p>
                   <p className="truncate text-sm text-muted">
                     {r.scheme ?? "—"} · {r.frequency === "quarterly" ? "Quarterly" : "Monthly"} · since {day(r.startDate)}
                   </p>

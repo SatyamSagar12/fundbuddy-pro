@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { findSchemes, listUnmatched, matchSchemes } from "@/functions/schemes";
-import { Button, Card, Notice, PageHeader } from "@/components/ui";
+import { Button, Card, inputClass, Notice, PageHeader } from "@/components/ui";
 import { money, navText } from "@/lib/format";
 import { SOMETHING_WRONG } from "@/lib/errors";
 
@@ -62,7 +62,7 @@ function MatchSchemesPage() {
       {data.rows.length === 0 ? (
         <Card>
           <p className="text-center text-muted">
-            Every scheme is matched. <Link to="/app" className="font-semibold text-bronze underline">Back to Home</Link>
+            Every scheme is matched. <Link to="/app" className="link-draw font-medium text-bronze">Back to Home</Link>
           </p>
         </Card>
       ) : (
@@ -112,12 +112,12 @@ function MatchRow({ row, busy, onMatch }: { row: Row; busy: boolean; onMatch: (i
         <h2 className="text-[17px] font-semibold">{row.scheme}</h2>
         <p className="text-sm text-muted">{uses}</p>
       </div>
-      <ul className="mt-3 divide-y divide-line rounded-lg border border-line">
+      <ul className="mt-3 divide-y divide-line overflow-hidden rounded-xl border border-line">
         {hits.length === 0 ? (
           <li className="px-4 py-3 text-sm text-muted">{found ? "Nothing found. Try other words." : "No close match. Search below."}</li>
         ) : (
           hits.map((h) => (
-            <li key={h.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+            <li key={h.id} className="ink-sweep flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-semibold leading-snug">
                   {h.name}
@@ -137,7 +137,7 @@ function MatchRow({ row, busy, onMatch }: { row: Row; busy: boolean; onMatch: (i
         onChange={(e) => setQ(e.target.value)}
         aria-label={`Search schemes for ${row.scheme}`}
         placeholder="Search other schemes…"
-        className="mt-3 block min-h-11 w-full rounded-lg border border-line bg-white px-3.5 text-[16px] outline-none focus:border-bronze"
+        className={`mt-3 ${inputClass}`}
       />
     </Card>
   );

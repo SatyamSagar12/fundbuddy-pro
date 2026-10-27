@@ -51,7 +51,7 @@ function SignupPage() {
       <AuthFrame title="Account created" subtitle={<>for <b>{sentTo}</b></>}>
         <p className="text-muted">You're the platform admin. You can sign in now.</p>
         <p className="mt-6">
-          <Link to="/login" className="font-semibold text-bronze underline">
+          <Link to="/login" className="link-draw font-medium text-bronze">
             Sign in
           </Link>
         </p>
@@ -67,7 +67,7 @@ function SignupPage() {
           password.
         </p>
         <p className="mt-6">
-          <Link to="/login" className="font-semibold text-bronze underline">
+          <Link to="/login" className="link-draw font-medium text-bronze">
             Go to sign in
           </Link>
         </p>
@@ -80,7 +80,7 @@ function SignupPage() {
       <AuthFrame title="Check your email" subtitle={<>We sent a confirmation link to <b>{sentTo}</b>.</>}>
         <p className="text-muted">Open it to finish setting up. It can take a minute; check spam if you don't see it.</p>
         <p className="mt-6">
-          <Link to="/login" className="font-semibold text-bronze underline">
+          <Link to="/login" className="link-draw font-medium text-bronze">
             Back to sign in
           </Link>
         </p>
@@ -110,7 +110,7 @@ function SignupPage() {
         {auth.google && <GoogleButton />}
         <p className="text-center text-[15px] text-muted">
           Already have an account?{" "}
-          <Link to="/login" className="font-semibold text-bronze underline">
+          <Link to="/login" className="link-draw font-medium text-bronze">
             Sign in
           </Link>
         </p>

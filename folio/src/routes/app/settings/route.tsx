@@ -15,15 +15,15 @@ function SettingsLayout() {
   ] as const;
   return (
     <div className="max-w-3xl space-y-5">
-      <h1 className="text-[26px] font-semibold tracking-tight">Settings</h1>
+      <h1 className="text-[2.25rem] sm:text-[2.875rem]"><span className="line-mask"><span>Settings</span></span></h1>
       <nav className="flex gap-1 overflow-x-auto border-b border-line">
         {tabs.map((t) => (
           <Link
             key={t.to}
             to={t.to}
             activeOptions={{ exact: t.exact }}
-            className="-mb-px border-b-2 border-transparent px-3 py-2.5 text-[15px] font-semibold whitespace-nowrap text-muted"
-            activeProps={{ className: "!border-ink !text-text" }}
+            className="-mb-px border-b-2 border-transparent px-3 py-2.5 text-[15px] font-medium whitespace-nowrap text-muted transition-colors hover:text-text"
+            activeProps={{ className: "!border-bronze !text-text" }}
           >
             {t.label}
           </Link>

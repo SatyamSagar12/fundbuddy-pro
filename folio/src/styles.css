@@ -1,34 +1,360 @@
+@import "@fontsource-variable/inter/opsz.css";
+@import "@fontsource-variable/source-serif-4/opsz.css";
+@import "@fontsource-variable/source-serif-4/opsz-italic.css";
 @import "tailwindcss";
 
-/* Anqulas palette (anqulas.com): olive ink, paper, bronze. Large, high-contrast text for older eyes. */
-@theme {
-  --color-ink: #1e2923;
-  --color-ink-2: #2d3b33;
-  --color-paper: #f4f1ea;
-  --color-card: #fbfaf7;
-  --color-line: #dcd6ca;
-  --color-text: #141613;
-  --color-muted: #5b5850;
-  --color-bronze: #7a5a2e;
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * The Anqulas design language, shared with Anqulas Docs: bone paper, deep olive ink, bronze as the one accent,
+ * a serif for headlines and big figures, Inter for everything read and operated. Fonts are self-hosted.
+ *
+ * Colour names are tokens, redefined for the dark theme below, so `bg-card`, `text-muted`, `border-line` work
+ * in both. The sidebar and the hero panels are olive in both themes: brand surfaces, not themable ones.
+ */
+@theme inline {
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-field: var(--field);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-soft: var(--soft);
+  --color-bronze: var(--bronze);
   --color-bronze-light: #cdae7e;
-  --color-good: #2f6b3f;
-  --color-bad: #a3352b;
-  --font-sans: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  /* Fixed olive: sidebar, hero panels, sign-in band. */
+  --color-ink: #1e2923;
+  --color-ink-2: #2a3730;
+  --color-bone: #f1ede4;
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+
+  --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-serif: "Source Serif 4 Variable", "Source Serif Pro", Georgia, "Times New Roman", serif;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Warm, low, diffuse: hairlines more than shadows. */
+  --shadow-xs: 0 1px 2px 0 rgb(30 41 35 / 0.05);
+  --shadow-sm: 0 1px 2px 0 rgb(30 41 35 / 0.04), 0 4px 14px -6px rgb(30 41 35 / 0.08);
+  --shadow-md: 0 2px 4px -2px rgb(30 41 35 / 0.06), 0 14px 30px -14px rgb(30 41 35 / 0.18);
+  --shadow-lg: 0 4px 8px -4px rgb(30 41 35 / 0.08), 0 28px 50px -24px rgb(30 41 35 / 0.28);
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
+:root {
+  --paper: #eeeae2;
+  --card: #fbfaf7;
+  --field: #ffffff;
+  --line: rgb(30 41 35 / 0.13);
+  --text: #0d0d0c;
+  --muted: #615d56;
+  --soft: #e3ded3;
+  --bronze: #7a5a2e;
+  --good: #3b6a48;
+  --good-soft: #dbe5d8;
+  --bad: #a3362b;
+  --bad-soft: #f1dcd6;
+  --warn: #85590f;
+  --warn-soft: #f0e3c8;
+  --primary: #1e2923;
+  --primary-fg: #f1ede4;
+  --chart-1: #2d3b33;
+  --chart-2: #cdae7e;
+  --chart-3: #7a5a2e;
+  color-scheme: light;
 }
-body {
-  margin: 0;
-  background: var(--color-paper);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  font-size: 17px;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
+
+.dark {
+  --paper: #151c18;
+  --card: #1c2520;
+  --field: #212b25;
+  --line: rgb(242 239 232 / 0.11);
+  --text: #f1ede4;
+  --muted: #a4ab9f;
+  --soft: #26322c;
+  --bronze: #cdae7e;
+  --good: #93c39c;
+  --good-soft: rgb(147 195 156 / 0.13);
+  --bad: #e3907f;
+  --bad-soft: rgb(227 144 127 / 0.14);
+  --warn: #dcb56f;
+  --warn-soft: rgb(220 181 111 / 0.14);
+  /* On the dark ground the primary flips to bone. */
+  --primary: #f1ede4;
+  --primary-fg: #1e2923;
+  --chart-1: #93c39c;
+  --chart-2: #cdae7e;
+  --chart-3: #e2c99e;
+  color-scheme: dark;
 }
-:focus-visible {
-  outline: 2px solid var(--color-bronze);
-  outline-offset: 3px;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.55;
+    letter-spacing: -0.006em;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  * {
+    border-color: var(--line);
+  }
+  /* Page headlines in the serif, regular and slightly tight; section headings stay in the sans. */
+  h1 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.022em;
+    line-height: 1.04;
+  }
+  h2 {
+    letter-spacing: -0.02em;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  th,
+  td,
+  time,
+  [data-numeric],
+  .font-serif {
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+  /* Room for the serif's descenders inside a one-line clip. */
+  h1.truncate,
+  .font-serif.truncate {
+    padding-block: 0.12em;
+    margin-block: -0.12em;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--bronze) 28%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--bronze);
+    outline-offset: 3px;
+  }
+}
+
+/*
+ * Motion (as in Anqulas Docs and anqulas.com): headlines rise out of a mask, content fades up in a short stagger,
+ * rows fill with ink on hover. All CSS: nothing waits on JavaScript to become visible.
+ */
+@layer utilities {
+  .eyebrow {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: -0.003em;
+  }
+  .text-display {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.028em;
+    line-height: 0.96;
+  }
+
+  /* <span class="line-mask"><span>Words</span></span> */
+  .line-mask {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.24em;
+    margin-bottom: -0.24em;
+  }
+  .line-mask > span {
+    display: block;
+    animation: fo-line 1.3s var(--ease-out-expo) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+
+  /* Staggered entrance: style={{ "--i": n }} sets the order. */
+  .reveal {
+    animation: fo-rise 1s var(--ease-out-expo) both;
+    animation-delay: calc(120ms + var(--i, 0) * 70ms);
+  }
+
+  /* After the first entrance of a visit, page changes replay a shorter version (MotionSettle). */
+  html[data-settled] .line-mask > span {
+    animation: fo-line 0.5s var(--ease-out-expo) both;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+  html[data-settled] .reveal {
+    animation: fo-rise-quick 0.35s var(--ease-out-expo) both;
+    animation-delay: calc(min(var(--i, 0), 6) * 30ms);
+  }
+
+  /* Underline that draws in from the left and leaves to the right. */
+  .link-draw {
+    position: relative;
+  }
+  .link-draw::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -3px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.5s var(--ease-out-expo);
+  }
+  .link-draw:hover::after,
+  .link-draw:focus-visible::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  /* Row hover: ink rises from the bottom edge behind the row. */
+  .ink-sweep {
+    position: relative;
+    isolation: isolate;
+  }
+  .ink-sweep::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: color-mix(in srgb, var(--bronze) 9%, transparent);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 0.55s var(--ease-out-expo);
+  }
+  .ink-sweep:hover::before,
+  .ink-sweep:focus-within::before {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+
+  /* A soft light that passes over a card on hover. */
+  .sheen {
+    position: relative;
+    overflow: hidden;
+  }
+  .sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--text) 6%, transparent) 50%, transparent 65%);
+    transform: translateX(-100%);
+    transition: transform 0.9s var(--ease-out-expo);
+  }
+  .sheen:hover::after {
+    transform: translateX(100%);
+  }
+
+  /* Bars and meters that grow to their value on load. */
+  .grow-x {
+    transform-origin: left;
+    animation: fo-grow 1.4s var(--ease-out-expo) both;
+    animation-delay: 250ms;
+  }
+  .grow-y {
+    transform-origin: bottom;
+    animation: fo-grow-y 1.1s var(--ease-out-expo) both;
+    animation-delay: calc(var(--i, 0) * 45ms + 220ms);
+  }
+
+  /* A slow ping, in the element's own colour. */
+  .ping-current {
+    animation: fo-ping 1.8s infinite;
+  }
+
+  /* Client initials: a soft tint of the client's own hue (--h). */
+  .client-avatar {
+    background: hsl(var(--h) 34% 50% / 0.14);
+    color: hsl(var(--h) 32% 30%);
+    box-shadow: inset 0 0 0 1px hsl(var(--h) 30% 40% / 0.14);
+  }
+  .dark .client-avatar {
+    background: hsl(var(--h) 30% 60% / 0.16);
+    color: hsl(var(--h) 45% 78%);
+    box-shadow: inset 0 0 0 1px hsl(var(--h) 30% 70% / 0.16);
+  }
+
+  @keyframes fo-line {
+    from {
+      transform: translateY(calc(100% + 0.3em));
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes fo-rise {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fo-rise-quick {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fo-grow {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  @keyframes fo-grow-y {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes fo-ping {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 60%, transparent);
+    }
+    70% {
+      box-shadow: 0 0 0 7px transparent;
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }

@@ -31,7 +31,7 @@ function VerifyPage() {
     return (
       <AuthFrame title="Email confirmed">
         <p className="text-muted">You can sign in now.</p>
-        <Link to="/login" className="mt-6 inline-flex font-semibold text-bronze underline">
+        <Link to="/login" className="mt-6 inline-flex link-draw font-medium text-bronze">
           Sign in
         </Link>
       </AuthFrame>

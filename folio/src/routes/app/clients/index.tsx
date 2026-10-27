@@ -3,7 +3,8 @@ import { Search } from "lucide-react";
 import { z } from "zod";
 import { listClients } from "@/functions/practice";
 import { assignClient, getTeam } from "@/functions/team";
-import { Card, linkButton, PageHeader } from "@/components/ui";
+import { Card, inputClass, linkButton, PageHeader } from "@/components/ui";
+import { ClientAvatar } from "@/components/client-avatar";
 import { Plus } from "lucide-react";
 import { money } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
@@ -63,14 +64,14 @@ function ClientsPage() {
         }}
         className="relative max-w-md"
       >
-        <Search size={18} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-muted" />
+        <Search size={18} className="pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-muted" />
         <input
           name="q"
           defaultValue={q ?? ""}
           key={q ?? ""}
           placeholder="Name, mobile, email or full PAN"
           aria-label="Search clients"
-          className="min-h-12 w-full rounded-lg border border-line bg-white pr-3 pl-10 text-[17px] outline-none focus:border-bronze"
+          className={`${inputClass} !pl-10`}
         />
       </form>
       <Card className="!p-0">
@@ -81,12 +82,15 @@ function ClientsPage() {
         ) : (
           <ul className="divide-y divide-line">
             {clients.map((c) => (
-              <li key={c.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
-                <Link to="/app/clients/$clientId" params={{ clientId: c.id }} className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-text hover:underline">{c.name}</p>
+              <li key={c.id} className="ink-sweep flex items-center justify-between gap-4 px-5 py-3.5">
+                <Link to="/app/clients/$clientId" params={{ clientId: c.id }} className="flex min-w-0 flex-1 items-center gap-3.5">
+                  <ClientAvatar name={c.name} />
+                  <span className="min-w-0">
+                  <p className="truncate font-medium text-text">{c.name}</p>
                   <p className="truncate text-sm text-muted">
                     {[c.mobile, c.email, c.pan].filter(Boolean).join(" · ") || "No contact details"}
                   </p>
+                  </span>
                 </Link>
                 <div className="flex shrink-0 items-center gap-3">
                   <div className="text-right">
@@ -103,7 +107,7 @@ function ClientsPage() {
                         await assignClient({ data: { investorId: c.id, userId: e.target.value || null } });
                         await router.invalidate();
                       }}
-                      className="min-h-10 max-w-40 rounded-lg border border-line bg-white px-2 text-sm"
+                      className="min-h-10 max-w-40 rounded-lg border border-line bg-field px-2 text-sm"
                     >
                       <option value="">Not assigned</option>
                       {people.map((p) => (

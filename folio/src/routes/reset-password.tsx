@@ -42,7 +42,7 @@ function ResetPage() {
     return (
       <AuthFrame title="Password changed">
         <p className="text-muted">You've been signed out everywhere. Sign in with your new password (and your authenticator code, if you use one).</p>
-        <Link to="/login" className="mt-6 inline-flex font-semibold text-bronze underline">
+        <Link to="/login" className="mt-6 inline-flex link-draw font-medium text-bronze">
           Sign in
         </Link>
       </AuthFrame>

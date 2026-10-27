@@ -9,7 +9,7 @@ export function RecoveryCodes({ codes, onDone, doneLabel }: { codes: string[]; o
         If you lose your phone, one of these codes gets you back in. <b>Save them now</b>: write them down or download
         them, and keep them away from your phone. You won't see them again.
       </p>
-      <ul className="grid grid-cols-2 gap-2 rounded-lg border border-line bg-white p-4 font-mono text-[15px] font-semibold tracking-wider" data-testid="recovery-codes">
+      <ul className="grid grid-cols-2 gap-2 rounded-lg border border-line bg-field p-4 font-mono text-[15px] font-semibold tracking-wider" data-testid="recovery-codes">
         {codes.map((c) => (
           <li key={c}>{c}</li>
         ))}

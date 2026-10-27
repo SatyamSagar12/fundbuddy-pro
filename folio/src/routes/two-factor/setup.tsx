@@ -66,7 +66,7 @@ function SetupPage() {
       {qr ? (
         <div className="mb-5 text-center">
           <div
-            className="mx-auto w-[200px] rounded-lg bg-white p-2"
+            className="mx-auto w-[200px] rounded-lg bg-[#fff] p-2"
             // The SVG is generated on our server from our own data.
             dangerouslySetInnerHTML={{ __html: qr.qrSvg }}
           />
@@ -86,7 +86,7 @@ function SetupPage() {
         </Button>
         {!required && (
           <p className="text-center text-[15px]">
-            <Link to="/app" className="font-semibold text-muted underline">
+            <Link to="/app" className="link-draw font-medium text-muted">
               Not now
             </Link>
           </p>

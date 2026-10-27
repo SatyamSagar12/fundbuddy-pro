@@ -135,6 +135,19 @@ npx tsx scripts/nav-import.ts --file <a NAVAll.txt> --synthetic-history   # made
 npx tsx scripts/e2e-nav.ts                                                # browser test of phase 2
 ```
 
+## Look and feel
+
+Same design language as Anqulas Docs:
+- **Colours and type.** Bone paper, olive ink and bronze; Source Serif for headlines and big figures, Inter for
+  everything else. Both fonts are self-hosted, so no visitor's browser calls Google.
+- **Motion, all in CSS.** Headlines rise out of a mask and content fades up in a stagger. Rows fill with ink on
+  hover, and figures count up on the first visit. Repeat visits get shorter versions, and the motion is off for
+  people who ask for less.
+- **Light and dark.** Chosen from the sidebar or Settings → Practice → Appearance, or following the device. The
+  sidebar and the value panel stay olive in both themes.
+
+Tokens and motion utilities live in `src/styles.css`; components in `src/components/ui.tsx`.
+
 ## Stack
 
 | Part | What |

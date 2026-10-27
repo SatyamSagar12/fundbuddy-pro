@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { getPractice, updatePractice } from "@/functions/practice";
+import { ThemeToggle } from "@/components/theme";
 import { Button, Card, Field, Notice } from "@/components/ui";
 import { firstIssue, SOMETHING_WRONG } from "@/lib/errors";
 
@@ -49,7 +50,7 @@ function SettingsPage() {
             <Field label="Practice name" name="name" defaultValue={p.name} required />
             <Field label="ARN" name="arn" defaultValue={p.arn ?? ""} placeholder="ARN-123456" />
             <Field label="EUIN" name="euin" defaultValue={p.euin ?? ""} placeholder="E123456" />
-            <label className="flex items-start gap-3 rounded-lg border border-line bg-white p-3 text-[15px]">
+            <label className="flex items-start gap-3 rounded-lg border border-line bg-field p-3 text-[15px]">
               <input type="checkbox" name="requireTotp" defaultChecked={p.requireTotp} className="mt-1 h-4 w-4" />
               <span>
                 <b>Require an authenticator app for everyone</b>
@@ -68,6 +69,11 @@ function SettingsPage() {
             <p className="text-sm text-muted">Only the practice owner can change these.</p>
           )}
         </form>
+      </Card>
+      <Card>
+        <h2 className="text-lg font-semibold">Appearance</h2>
+        <p className="mt-1 mb-4 text-[15px] text-muted">Light, dark, or the same as this device. Kept on this device only.</p>
+        <ThemeToggle tone="paper" />
       </Card>
     </div>
   );

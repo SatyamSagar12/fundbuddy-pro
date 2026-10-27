@@ -5,6 +5,7 @@ import { z } from "zod";
 import { clientOptions, deleteInvestment, listInvestments, saveInvestment } from "@/functions/ledger";
 import { Button, Card, Field, linkButtonSecondary, Notice, PageHeader, SelectField } from "@/components/ui";
 import { SchemePicker } from "@/components/scheme-picker";
+import { ClientAvatar } from "@/components/client-avatar";
 import { INVESTMENT_TYPES, investmentSchema, PAYMENT_MODES, todayIst, type InvestmentForm } from "@/lib/records";
 import { day, money, navText, txnType, units } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
@@ -127,9 +128,10 @@ function InvestmentsPage() {
         ) : (
           <ul className="divide-y divide-line">
             {rows.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+              <li key={r.id} className="ink-sweep flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                <ClientAvatar name={r.client} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{r.client}</p>
+                  <p className="truncate font-medium">{r.client}</p>
                   <p className="truncate text-sm text-muted">
                     {r.scheme ?? "—"} · {day(r.date)}
                     {r.paymentMode ? ` · ${r.paymentMode}` : ""}

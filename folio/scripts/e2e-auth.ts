@@ -101,7 +101,7 @@ try {
   await page.getByTestId("recovery-codes").waitFor();
   await page.getByRole("button", { name: /I've saved them/ }).click();
   await waitForUrl(page, "/app");
-  await page.getByText("Good to see you, Test").waitFor();
+  await page.getByText(/Good (morning|afternoon|evening), Test/).waitFor();
   check(true, "authenticator turned on; Home opens");
 
   await page.getByRole("link", { name: "Clients" }).first().click();

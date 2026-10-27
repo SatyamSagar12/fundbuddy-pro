@@ -86,9 +86,9 @@ function BillingPage() {
               </h2>
               <div className="flex flex-wrap items-start gap-5">
                 {/* The SVG is generated on our server from our own UPI ID and amount. */}
-                <div className="w-[220px] shrink-0 rounded-lg bg-white p-2" dangerouslySetInnerHTML={{ __html: upi.qrSvg }} />
+                <div className="w-[220px] shrink-0 rounded-lg bg-[#fff] p-2" dangerouslySetInnerHTML={{ __html: upi.qrSvg }} />
                 <ol className="list-decimal space-y-2 pl-5 text-[15px]">
-                  <li>Scan with any UPI app (GPay, PhonePe, Paytm, BHIM), or on this phone tap <a className="font-semibold text-bronze underline" href={upi.url}>Pay with a UPI app</a>.</li>
+                  <li>Scan with any UPI app (GPay, PhonePe, Paytm, BHIM), or on this phone tap <a className="link-draw font-medium text-bronze" href={upi.url}>Pay with a UPI app</a>.</li>
                   <li>
                     Check it shows <b>{upi.upiId}</b> and <b>{money(upi.amount)}</b>.
                   </li>
@@ -119,7 +119,7 @@ function BillingPage() {
                       role="radio"
                       aria-checked={months === m}
                       onClick={() => setMonths(m)}
-                      className={`rounded-md px-3 py-1.5 ${months === m ? "bg-ink text-paper" : "text-muted"}`}
+                      className={`rounded-md px-3 py-1.5 ${months === m ? "bg-primary text-primary-fg" : "text-muted"}`}
                     >
                       {m === 12 ? "Yearly" : "Monthly"}
                     </button>
@@ -130,9 +130,9 @@ function BillingPage() {
                 {PLAN_IDS.map((id) => {
                   const p = PLANS[id];
                   return (
-                    <div key={id} className="flex flex-col rounded-xl border border-line bg-white p-4">
+                    <div key={id} className="flex flex-col rounded-xl border border-line bg-field p-4">
                       <p className="font-semibold">{p.name}</p>
-                      <p className="mt-1 text-[22px] font-semibold">
+                      <p className="mt-1 font-serif text-[1.75rem] leading-tight">
                         {money(p.inr[months])}
                         <span className="text-sm font-normal text-muted">/{months === 12 ? "year" : "month"}</span>
                       </p>
@@ -161,7 +161,7 @@ function BillingPage() {
           <h2 className="px-5 pt-5 pb-2 text-lg font-semibold">Payments</h2>
           <ul className="divide-y divide-line">
             {b.history.map((h) => (
-              <li key={h.id} className="flex items-center justify-between gap-3 px-5 py-3 text-[15px]">
+              <li key={h.id} className="ink-sweep flex items-center justify-between gap-3 px-5 py-3 text-[15px]">
                 <span>
                   {day(h.createdAt)} · {PLANS[h.plan as PlanId]?.name ?? h.plan}, {h.months === 12 ? "1 year" : "1 month"}
                   {h.reference && <span className="text-muted"> · UTR {h.reference}</span>}

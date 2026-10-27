@@ -46,10 +46,24 @@ try {
   await p.getByRole("button", { name: "Add sample data" }).click();
   await p.getByText("Sample data is in your account").waitFor();
   await go(p, "/app");
-  const value = await p.locator("text=Current value").locator("..").textContent();
+  const value = await p.getByText("Current value of your clients' money").locator("..").textContent();
   check(value && /₹[\d,]+/.test(value), `Home shows a current value (${value?.replace(/\s+/g, " ")})`);
-  check(await p.getByRole("link", { name: "Match schemes" }).isVisible(), "Home points to the schemes still to match");
+  check(await p.getByRole("link", { name: /Schemes to match/ }).isVisible(), "Home points to the schemes still to match");
+  await p.waitForTimeout(1800);
   if (shots) await p.screenshot({ path: `${shots}/home.png`, fullPage: true });
+  if (shots) {
+    await p.evaluate(() => {
+      localStorage.setItem("theme", "dark");
+    });
+    await go(p, "/app");
+    await p.waitForTimeout(1800);
+    check(await p.evaluate(() => document.documentElement.classList.contains("dark")), "dark theme applies from the saved choice");
+    await p.screenshot({ path: `${shots}/home-dark.png`, fullPage: true });
+    await go(p, "/app/reports");
+    await p.waitForTimeout(1500);
+    await p.screenshot({ path: `${shots}/reports-dark.png`, fullPage: true });
+    await p.evaluate(() => localStorage.removeItem("theme"));
+  }
 
   await go(p, "/app/clients");
   check((await p.locator("main li").filter({ hasText: "Ramesh Kumar" }).textContent())?.includes("₹"), "Clients list shows each client's value");

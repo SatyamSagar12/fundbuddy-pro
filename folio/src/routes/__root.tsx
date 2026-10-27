@@ -1,6 +1,7 @@
 import { HeadContent, Link, Outlet, Scripts, createRootRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import appCss from "../styles.css?url";
+import { THEME_SCRIPT } from "@/components/theme";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -10,14 +11,12 @@ export const Route = createRootRoute({
       { title: "Anqulas Folio" },
       { name: "description", content: "Back office for mutual fund distributors." },
       { name: "robots", content: "noindex" },
-      { name: "theme-color", content: "#1e2923" },
+      { name: "theme-color", content: "#eeeae2", media: "(prefers-color-scheme: light)" },
+      { name: "theme-color", content: "#151c18", media: "(prefers-color-scheme: dark)" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Folio" },
     ],
     links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", type: "image/png", href: "/icons/favicon-32.png" },
@@ -30,9 +29,14 @@ export const Route = createRootRoute({
     </Shell>
   ),
   notFoundComponent: () => (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
-      <h1 className="text-2xl font-semibold">Page not found</h1>
-      <Link to="/" className="font-semibold text-bronze underline">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+      <p className="eyebrow text-bronze">Not found</p>
+      <h1 className="text-[2.75rem]">
+        <span className="line-mask">
+          <span>This page isn't here.</span>
+        </span>
+      </h1>
+      <Link to="/" className="link-draw font-medium text-bronze">
         Go to Anqulas Folio
       </Link>
     </main>
@@ -41,8 +45,10 @@ export const Route = createRootRoute({
 
 function Shell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Applies the saved colour theme before the first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <HeadContent />
       </head>
       <body>

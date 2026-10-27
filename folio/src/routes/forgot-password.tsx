@@ -34,7 +34,7 @@ function ForgotPage() {
       {sent ? (
         <div className="space-y-4">
           <Notice tone="good">If that email has an account, a link to choose a new password is on its way. It works for 60 minutes.</Notice>
-          <Link to="/login" className="font-semibold text-bronze underline">
+          <Link to="/login" className="link-draw font-medium text-bronze">
             Back to sign in
           </Link>
         </div>
@@ -46,7 +46,7 @@ function ForgotPage() {
             {busy ? "Sending…" : "Send reset link"}
           </Button>
           <p className="text-center text-[15px]">
-            <Link to="/login" className="font-semibold text-bronze underline">
+            <Link to="/login" className="link-draw font-medium text-bronze">
               Back to sign in
             </Link>
           </p>

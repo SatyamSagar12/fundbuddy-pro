@@ -74,8 +74,8 @@ function ClientPage() {
           { k: "SIPs", v: money(monthly), sub: `${active.length} active · per month` },
         ].map((x) => (
           <Card key={x.k} className="!p-5">
-            <p className="text-[13px] font-semibold tracking-wide text-muted uppercase">{x.k}</p>
-            <p className={`mt-1 text-[22px] font-semibold tabular-nums ${x.tone ?? ""}`}>{x.v}</p>
+            <p className="eyebrow text-muted">{x.k}</p>
+            <p className={`mt-2 font-serif text-[1.875rem] leading-none tracking-[-0.02em] ${x.tone ?? ""}`}>{x.v}</p>
             {x.sub && <p className="text-[13px] text-muted">{x.sub}</p>}
           </Card>
         ))}
@@ -92,7 +92,7 @@ function ClientPage() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-[15px]">
               <thead>
-                <tr className="border-b border-line text-left text-[13px] font-semibold tracking-wide text-muted uppercase">
+                <tr className="eyebrow border-b border-line text-left text-muted">
                   <th className="px-5 py-2">Scheme</th>
                   <th className="px-3 py-2 text-right">Units</th>
                   <th className="px-3 py-2 text-right">Invested</th>
@@ -128,7 +128,7 @@ function ClientPage() {
                   <tr key={`u:${u.scheme}`}>
                     <td className="px-5 py-3">
                       <p className="font-semibold leading-snug">{u.scheme}</p>
-                      <Link to="/app/schemes" className="text-[13px] font-semibold text-bronze underline">
+                      <Link to="/app/schemes" className="text-[13px] link-draw font-medium text-bronze">
                         Match this scheme to see its value
                       </Link>
                     </td>
@@ -194,7 +194,7 @@ function ClientPage() {
         ) : (
           <ul className="divide-y divide-line">
             {c.sips.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-3 px-5 py-3">
+              <li key={s.id} className="ink-sweep flex items-center justify-between gap-3 px-5 py-3">
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{s.scheme ?? "—"}</p>
                   <p className="text-sm text-muted">
@@ -223,7 +223,7 @@ function ClientPage() {
         ) : (
           <ul className="divide-y divide-line">
             {c.transactions.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-3 px-5 py-3">
+              <li key={t.id} className="ink-sweep flex items-center justify-between gap-3 px-5 py-3">
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{t.scheme ?? "—"}</p>
                   <p className="text-sm text-muted">

@@ -43,3 +43,16 @@ export function gainTone(value: number | null | undefined): string {
   if (!value) return "";
   return value > 0 ? "text-good" : "text-bad";
 }
+
+/** Initials for a client tile: "Ramesh Kumar" → "RK". */
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "")).toUpperCase() || "?";
+}
+
+/** A steady hue per name, for the client tile's tint. */
+export function hueOf(name: string): number {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return h;
+}
