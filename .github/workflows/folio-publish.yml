@@ -89,7 +89,7 @@ jobs:
             npx wrangler hyperdrive update "$id" --caching-disabled --connection-string="$DATABASE_URL"
           fi
           [ -n "$id" ] || { echo "::error::Could not create the Hyperdrive connection"; exit 1; }
-          sed -i "s/\"id\": \"00000000000000000000000000000000\"/\"id\": \"$id\"/" wrangler.jsonc
+          sed -i -E "s/\"id\": \"[0-9a-f]{32}\"/\"id\": \"$id\"/" wrangler.jsonc
           grep -q "$id" wrangler.jsonc
 
       - name: Build and publish

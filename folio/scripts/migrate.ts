@@ -6,6 +6,11 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 
+// --required (Cloudflare's builder): no silent fallback to the local database.
+if (process.argv.includes("--required") && !process.env["DATABASE_URL"]) {
+  console.error("DATABASE_URL is not set. Add it under Settings → Build → Variables and secrets (the Supabase session pooler URL).");
+  process.exit(1);
+}
 const url = process.env["DATABASE_URL"] ?? "postgres://folio_owner:folio_owner@127.0.0.1:5432/folio";
 const client = postgres(url, { max: 1, onnotice: () => {} });
 await migrate(drizzle(client), { migrationsFolder: "db/migrations" });

@@ -5,6 +5,8 @@
   "main": "src/server.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
+  // Keep variables set in the Cloudflare dashboard when a new version is published (secrets are always kept).
+  "keep_vars": true,
   "observability": { "enabled": true },
   // Runs the Worker near the database (Mumbai) rather than near each visitor.
   "placement": { "mode": "smart" },
@@ -17,8 +19,8 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      // Create with: npx wrangler hyperdrive create folio-db --connection-string="<Supabase session pooler URL>"
-      "id": "00000000000000000000000000000000",
+      // "folio-db" in Cloudflare → Storage & databases → Hyperdrive (Supabase Mumbai, session pooler, caching off).
+      "id": "4e3fe3d2fe994df690344dadff36a906",
       // Used by `vite dev` only; production goes through Hyperdrive.
       "localConnectionString": "postgres://folio_owner:folio_owner@127.0.0.1:5432/folio"
     }

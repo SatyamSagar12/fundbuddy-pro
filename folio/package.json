@@ -11,7 +11,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types",
+    "cf:build": "tsx scripts/migrate.ts --required && tsx scripts/approve-admins.ts --build && vite build"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
