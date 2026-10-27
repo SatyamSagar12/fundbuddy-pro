@@ -7,8 +7,9 @@ import handler from "@tanstack/react-start/server-entry";
 import { runWithDb } from "./server/db/client";
 import { deleteExpiredSessions } from "./server/session";
 import { deleteOldRateLimits } from "./server/rate-limit";
+import { ensureReady, maintenance } from "./server/maintenance";
 
-type Env = { HYPERDRIVE: Hyperdrive };
+type Env = { HYPERDRIVE: Hyperdrive; MIGRATE_TOKEN?: string; PLATFORM_ADMIN_EMAILS?: string };
 
 const SECURITY_HEADERS: Record<string, string> = {
   "strict-transport-security": "max-age=63072000; includeSubDomains",
@@ -20,7 +21,23 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const { result, close } = await runWithDb(env.HYPERDRIVE.connectionString, async () => handler.fetch(request));
+    const { result, close } = await runWithDb(
+      env.HYPERDRIVE.connectionString,
+      async () => {
+        const special = await maintenance(request, env);
+        if (special) return special;
+        try {
+          await ensureReady(env);
+        } catch (e) {
+          console.error("Startup (migrations) failed:", e);
+          return new Response("Anqulas Folio is starting up. Please try again in a minute.", {
+            status: 503,
+            headers: { "retry-after": "30" },
+          });
+        }
+        return handler.fetch(request);
+      },
+    );
     // Pages stream; keep the database connection until the whole body has been sent, then close it.
     let body: ReadableStream | null = null;
     if (result.body) {

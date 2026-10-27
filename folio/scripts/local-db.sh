@@ -8,7 +8,7 @@ DO $$ BEGIN
   END IF;
 END $$;
 SQL
-for db in folio folio_test; do
+for db in folio folio_test folio_mig; do
   sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname = '$db'" | grep -q 1 \
     || sudo -u postgres createdb -O folio_owner "$db"
 done

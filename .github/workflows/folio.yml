@@ -53,6 +53,7 @@ jobs:
         run: |
           psql -h localhost -U postgres -c "CREATE ROLE folio_owner LOGIN PASSWORD 'folio_owner' CREATEROLE"
           psql -h localhost -U postgres -c "CREATE DATABASE folio_test OWNER folio_owner"
+          psql -h localhost -U postgres -c "CREATE DATABASE folio_mig OWNER folio_owner"
           DATABASE_URL=postgres://folio_owner:folio_owner@localhost:5432/folio_test npm run db:migrate
       - run: npx wrangler types
       - run: npm run typecheck

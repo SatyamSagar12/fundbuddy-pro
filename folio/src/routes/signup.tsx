@@ -13,6 +13,7 @@ function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [awaitingApproval, setAwaitingApproval] = useState(false);
+  const [approved, setApproved] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -32,6 +33,7 @@ function SignupPage() {
       if (res.ok) {
         setSentTo(data.email);
         setAwaitingApproval(!res.emailSent);
+        setApproved(res.approved === true);
       }
       else setError(res.error);
     } catch (err) {
@@ -39,6 +41,19 @@ function SignupPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (sentTo && approved) {
+    return (
+      <AuthFrame title="Account created" subtitle={<>for <b>{sentTo}</b></>}>
+        <p className="text-muted">You're the platform admin. You can sign in now.</p>
+        <p className="mt-6">
+          <Link to="/login" className="font-semibold text-bronze underline">
+            Sign in
+          </Link>
+        </p>
+      </AuthFrame>
+    );
   }
 
   if (sentTo && awaitingApproval) {

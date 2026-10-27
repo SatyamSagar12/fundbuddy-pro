@@ -107,10 +107,17 @@ async function signUp(browser: Browser, email: string, practice: string) {
   await page.getByLabel("Work email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.getByRole("heading", { name: "Check your email" }).waitFor();
-  await page.goto(await mailLink(page, email, "verify-email"), { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Confirm my email" }).click();
-  await page.getByRole("heading", { name: "Email confirmed" }).waitFor();
+  // The platform admin's first sign-up is approved at once (bootstrap); everyone else confirms by email.
+  const outcome = await Promise.race([
+    page.getByRole("heading", { name: "Check your email" }).waitFor().then(() => "email" as const),
+    page.getByText("You're the platform admin").waitFor().then(() => "approved" as const),
+  ]);
+  if (email === ADMIN) check(outcome === "approved", "the first platform admin sign-up is approved at once");
+  if (outcome === "email") {
+    await page.goto(await mailLink(page, email, "verify-email"), { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "Confirm my email" }).click();
+    await page.getByRole("heading", { name: "Email confirmed" }).waitFor();
+  }
   await go(page, "/login");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);

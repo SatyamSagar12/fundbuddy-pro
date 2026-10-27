@@ -17,6 +17,7 @@ import { hmacHex, newWrappedDataKey, randomToken, sealWithMaster } from "@/serve
 import { dummyPasswordHash, hashPassword, passwordProblem, verifyPassword } from "@/server/password";
 import { newTotpSecret, otpauthUrl } from "@/server/totp";
 import { checkCode } from "@/server/two-factor";
+import { approveAdmins } from "@/server/maintenance";
 import { billingFor } from "@/server/billing";
 import { createSession, endAllSessions, endSession, getSession, markMfaPassed } from "@/server/session";
 import { audit, clientIp, newRecoveryCodes, securityEmail, consumeRecoveryCode } from "@/server/security";
@@ -77,7 +78,7 @@ const signupInput = z.object({
 
 export const signup = createServerFn({ method: "POST" })
   .validator((input: unknown) => signupInput.parse(input))
-  .handler(async ({ data }): Promise<Result<{ emailSent: boolean }>> => {
+  .handler(async ({ data }): Promise<Result<{ emailSent: boolean; approved?: boolean }>> => {
     if (!(await underLimit(`signup:ip:${clientIp()}`, 5, 3600))) {
       return { ok: false, error: "Too many sign-ups from this network. Try again in an hour." };
     }
@@ -122,8 +123,11 @@ export const signup = createServerFn({ method: "POST" })
       return user!.id;
     });
     await audit(practiceId, userId, "practice.created");
-    const emailSent = await sendVerification(userId, data.email, data.name);
-    return { ok: true, emailSent };
+    // Bootstrap: the platform admin's very first sign-up is approved at once (only while no admin exists),
+    // so the first admin can sign in before any email service is set up.
+    const approved = (await approveAdmins(appEnv().PLATFORM_ADMIN_EMAILS ?? "", true)).includes(data.email);
+    const emailSent = approved ? true : await sendVerification(userId, data.email, data.name);
+    return { ok: true, emailSent, approved };
   });
 
 export const resendVerification = createServerFn({ method: "POST" })

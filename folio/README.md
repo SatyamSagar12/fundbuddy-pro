@@ -114,6 +114,28 @@ Changing the database: edit `src/server/db/schema.ts`, then `npm run db:generate
 row-level security in a custom migration (`npx drizzle-kit generate --custom --name <name>`); copy the pattern in
 `0001_row_level_security.sql`. The RLS test fails if a table is left without it.
 
+## Where it runs now (Cloudflare Pages)
+
+- **Live:** `https://anqulas-folio.pages.dev`, and `https://folio.anqulas.com` once the Namecheap CNAME
+  `folio → anqulas-folio.pages.dev` is in place.
+- **Project:** the Cloudflare Pages project `anqulas-folio` (production branch `main`), holding:
+  - the Hyperdrive binding `HYPERDRIVE` (`folio-db`, caching off)
+  - the secrets `MASTER_KEY`, `SESSION_SECRET`, `MIGRATE_TOKEN`, `PLATFORM_ADMIN_EMAILS`
+- **Why Pages:** a Pages site can use a domain whose DNS is elsewhere (Namecheap).
+- **Publish a new version:**
+  ```sh
+  npm run build:pages
+  npx wrangler pages deploy dist/pages --project-name anqulas-folio --branch main
+  ```
+  Run the deploy from a folder without `wrangler.jsonc`, or copy `dist/pages` elsewhere first.
+- **Database:** the first request after a publish applies new migrations itself (`src/server/maintenance.ts`, safe
+  when several instances start at once). `POST /__maintenance/migrate` with `Authorization: Bearer <MIGRATE_TOKEN>`
+  does it on demand.
+- **First admin:** the first sign-up with an email in `PLATFORM_ADMIN_EMAILS` is approved at once, but only while
+  no admin account exists. Later sign-ups wait for approval in `/platform` until an email service is set up.
+- **Not on Pages:** scheduled jobs. Hourly housekeeping doesn't run there; the daily NAV import (phase 2) will need
+  the Worker route below, or a scheduled GitHub Action calling the app.
+
 ## Putting it online (Cloudflare builds it from GitHub)
 
 Cloudflare builds and publishes the app on every push to the connected branch, the way Vercel does. Each build
