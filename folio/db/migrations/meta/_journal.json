@@ -47,12 +47,19 @@
     {
       "idx": 6,
       "version": "7",
+      "when": 1793177921552,
+      "tag": "0006_phase3_inbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
       "when": 1793179066290,
       "tag": "0010_families_scope",
       "breakpoints": true
     },
     {
-      "idx": 7,
+      "idx": 8,
       "version": "7",
       "when": 1793181532501,
       "tag": "0011_client_portal",

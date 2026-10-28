@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { ArrowRight, ChevronRight, Plus } from "lucide-react";
+import { ArrowRight, ChevronRight, MessageCircle, Phone, Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { addSample, getDashboard, removeSample } from "@/functions/practice";
@@ -8,9 +8,10 @@ import { ClientAvatar } from "@/components/client-avatar";
 import { CountUp } from "@/components/motion";
 import { day, money, percent, txnType } from "@/lib/format";
 import { shownReturn } from "@/lib/holdings";
+import { expectShape } from "@/components/page-error";
 
 export const Route = createFileRoute("/app/")({
-  loader: () => getDashboard(),
+  loader: async () => expectShape(await getDashboard(), "briefing"),
   head: () => ({ meta: [{ title: "Home · Anqulas Folio" }] }),
   component: HomePage,
 });
@@ -91,7 +92,7 @@ function HomePage() {
       {d.clients > 0 && (
         <>
           <section aria-label="Summary" className="grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-            <ValueHero total={d.total} />
+            <ValueHero total={d.total} dayChange={d.briefing.dayChange} dayChangePct={d.briefing.dayChangePct} />
             <div
               className="reveal grid overflow-hidden rounded-2xl bg-card shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-16px_rgb(30_41_35/0.18)] ring-1 ring-line lg:grid-rows-3"
               style={order(2)}
@@ -101,7 +102,7 @@ function HomePage() {
                 label="SIP inflow a month"
                 value={d.monthlySip}
                 format={formatMoney}
-                detail={`${d.activeSips} active SIP${d.activeSips === 1 ? "" : "s"}`}
+                detail={`${d.activeSips} running SIP${d.activeSips === 1 ? "" : "s"}`}
                 meter={<Segments filled={Math.min(d.activeSips, 10)} total={10} className="bg-good" />}
               />
               <MetricRow
@@ -122,6 +123,8 @@ function HomePage() {
               />
             </div>
           </section>
+
+          <TodayList b={d.briefing} advisor={me.name} />
 
           {authCallout}
 
@@ -175,7 +178,7 @@ function HomePage() {
 type Total = Awaited<ReturnType<typeof getDashboard>>["total"];
 
 /** The practice's money, valued at the latest NAV: the one figure that matters first. Olive in both themes. */
-function ValueHero({ total: t }: { total: Total }) {
+function ValueHero({ total: t, dayChange, dayChangePct }: { total: Total; dayChange: number | null; dayChangePct: number | null }) {
   const valued = t.value > 0 || t.cost > 0;
   const working = !valued && t.pendingUnits > 0;
   const ret = shownReturn(t);
@@ -207,6 +210,15 @@ function ValueHero({ total: t }: { total: Total }) {
             <li className="rounded-full border border-bone/15 px-3 py-1 text-[13px] text-[#d8d2c5]">
               {ret.label} {percent(ret.value)}
             </li>
+            {dayChange !== null && dayChange !== 0 && (
+              <li
+                className={clsx("rounded-full border px-3 py-1 text-[13px]", dayChange > 0 ? "border-[#9fc0a6]/30 text-[#bfe0c5]" : "border-[#e3907f]/30 text-[#f0b5a8]")}
+                title="Change since the previous NAV"
+              >
+                {dayChange > 0 ? "+" : "−"}
+                {money(Math.abs(dayChange))} today{dayChangePct !== null ? ` (${dayChangePct > 0 ? "+" : ""}${(dayChangePct * 100).toFixed(2)}%)` : ""}
+              </li>
+            )}
             {t.pendingUnits > 0 && (
               <li className="rounded-full border border-bone/15 px-3 py-1 text-[13px] text-[#d8d2c5]">{t.pendingUnits} entries waiting for NAVs</li>
             )}
@@ -291,5 +303,130 @@ function Callout({ children, action, i }: { children: ReactNode; action?: ReactN
       <p className="text-[15px]">{children}</p>
       {action}
     </Card>
+  );
+}
+
+type BriefingData = Awaited<ReturnType<typeof getDashboard>>["briefing"];
+
+/** Phone number for a WhatsApp link: digits only, Indian numbers get 91 in front. */
+function waNumber(mobile: string): string | null {
+  const d = mobile.replace(/\D/g, "").replace(/^0+/, "");
+  if (d.length === 10) return `91${d}`;
+  return d.length >= 11 && d.length <= 15 ? d : null;
+}
+
+function ContactButtons({ mobile, message }: { mobile: string | null; message: string }) {
+  if (!mobile) return <span className="text-[13px] text-muted">No mobile saved</span>;
+  const wa = waNumber(mobile);
+  return (
+    <span className="flex shrink-0 gap-1.5">
+      <a href={`tel:${mobile.replace(/[^\d+]/g, "")}`} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line px-3 text-[13px] font-medium hover:bg-soft" aria-label="Call">
+        <Phone size={14} aria-hidden /> Call
+      </a>
+      {wa && (
+        <a
+          href={`https://wa.me/${wa}?text=${encodeURIComponent(message)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line px-3 text-[13px] font-medium hover:bg-soft"
+          aria-label="WhatsApp"
+        >
+          <MessageCircle size={14} aria-hidden /> WhatsApp
+        </a>
+      )}
+    </span>
+  );
+}
+
+/** Who to call today, and the week's SIP numbers: the morning briefing, on screen. */
+function TodayList({ b, advisor }: { b: BriefingData; advisor: string }) {
+  const first = (n: string) => n.split(" ")[0] ?? n;
+  const me = advisor.split(" ")[0];
+  const items: { key: string; client: string; investorId: string; mobile: string | null; title: string; detail: string; tone: string; message: string }[] = [];
+  for (const s of b.sips.bouncedList) {
+    items.push({
+      key: `b-${s.investorId}-${s.scheme}`,
+      client: s.client,
+      investorId: s.investorId,
+      mobile: s.mobile,
+      title: "SIP bounced",
+      detail: `${money(s.amount)} · ${s.scheme}`,
+      tone: "text-bad",
+      message: `Namaste ${first(s.client)} ji, your SIP of ${money(s.amount)} in ${s.scheme} did not go through this time: the bank returned it. Please keep the balance ready for the next date, or let me know if you want any change. – ${me}`,
+    });
+  }
+  for (const r of b.redemptions) {
+    items.push({
+      key: `r-${r.investorId}-${r.date}-${r.amount}`,
+      client: r.client,
+      investorId: r.investorId,
+      mobile: r.mobile,
+      title: `Redeemed ${money(r.amount)}`,
+      detail: `${r.scheme} · ${day(r.date)}`,
+      tone: "text-warn",
+      message: `Namaste ${first(r.client)} ji, I saw the redemption of ${money(r.amount)} from ${r.scheme}. Do you have a plan for this money? Happy to help. – ${me}`,
+    });
+  }
+  for (const x of b.birthdays) {
+    items.push({
+      key: `d-${x.investorId}`,
+      client: x.client,
+      investorId: x.investorId,
+      mobile: x.mobile,
+      title: x.inDays === 0 ? "Birthday today" : `Birthday ${new Date(`${x.date}T00:00:00Z`).toLocaleDateString("en-IN", { weekday: "long", timeZone: "UTC" })}`,
+      detail: "Send wishes",
+      tone: "text-bronze",
+      message: `Happy birthday, ${first(x.client)} ji! Wishing you good health and happiness in the year ahead. – ${me}`,
+    });
+  }
+  const stats = [
+    b.sips.paidRecent.count > 0 && `${b.sips.paidRecent.count} SIP instalments in the last 7 days · ${money(b.sips.paidRecent.amount)}`,
+    b.sips.dueWeek.count > 0 && `${b.sips.dueWeek.count} SIPs due this week · ${money(b.sips.dueWeek.amount)}`,
+    b.newMoney.count > 0 && `${b.newMoney.count} one-time investment${b.newMoney.count > 1 ? "s" : ""} · ${money(b.newMoney.amount)}`,
+    b.sips.missed > 0 && `${b.sips.missed} SIP${b.sips.missed > 1 ? "s" : ""} missed an instalment`,
+    b.sips.endingSoon > 0 && `${b.sips.endingSoon} SIP${b.sips.endingSoon > 1 ? "s" : ""} ending soon`,
+  ].filter(Boolean) as string[];
+
+  return (
+    <section aria-label="Today" className="reveal overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-line" style={order(3)}>
+      <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-4 pb-3 sm:px-6">
+        <h2 className="text-[15px] font-semibold tracking-[-0.01em]">Today</h2>
+        <Link to="/app/sips" className="link-draw text-[13px] font-medium text-bronze">
+          SIP book
+        </Link>
+      </div>
+      {items.length === 0 ? (
+        <p className="border-t border-line px-5 py-4 text-[15px] text-muted sm:px-6">Nothing needs a call today: no bounced SIPs, big redemptions or birthdays.</p>
+      ) : (
+        <ul className="divide-y divide-line border-t border-line">
+          {items.map((it, i) => (
+            <li key={it.key} className="ink-sweep reveal flex flex-wrap items-center gap-3.5 px-5 py-3 sm:px-6" style={order(4 + i)}>
+              <ClientAvatar name={it.client} />
+              <div className="min-w-[12rem] flex-1">
+                <p className="text-[15px] font-medium">
+                  <Link to="/app/clients/$clientId" params={{ clientId: it.investorId }} className="hover:underline">
+                    {it.client}
+                  </Link>{" "}
+                  <span className={`text-[13px] font-semibold whitespace-nowrap ${it.tone}`}>· {it.title}</span>
+                </p>
+                <p className="truncate text-[13px] text-muted">{it.detail}</p>
+              </div>
+              <span className="w-full pl-[3.125rem] sm:w-auto sm:pl-0">
+                <ContactButtons mobile={it.mobile} message={it.message} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {stats.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5 border-t border-line px-5 py-3 sm:px-6">
+          {stats.map((t) => (
+            <li key={t} className="rounded-full bg-soft px-3 py-1 text-[13px] text-muted">
+              {t}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

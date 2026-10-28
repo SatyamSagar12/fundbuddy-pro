@@ -1,6 +1,6 @@
 {
-  "id": "e822c8c6-46d6-42d6-b74c-5b1ab761208d",
-  "prevId": "67142cd7-b691-49b6-b992-14e53aa3f925",
+  "id": "9a491242-a4c4-426f-a9a3-f0edd404673f",
+  "prevId": "85641d97-d924-496e-94e3-14e7e0d80922",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -330,6 +330,112 @@
           "tableTo": "investors",
           "columnsFrom": [
             "investor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.inbox_messages": {
+      "name": "inbox_messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "practice_id": {
+          "name": "practice_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "from_address": {
+          "name": "from_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subject": {
+          "name": "subject",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detail": {
+          "name": "detail",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "payload_enc": {
+          "name": "payload_enc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "inbox_messages_practice_idx": {
+          "name": "inbox_messages_practice_idx",
+          "columns": [
+            {
+              "expression": "practice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "received_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "inbox_messages_practice_id_practices_id_fk": {
+          "name": "inbox_messages_practice_id_practices_id_fk",
+          "tableFrom": "inbox_messages",
+          "tableTo": "practices",
+          "columnsFrom": [
+            "practice_id"
           ],
           "columnsTo": [
             "id"
@@ -946,6 +1052,13 @@
           "notNull": true,
           "default": true
         },
+        "briefing_email": {
+          "name": "briefing_email",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1522,6 +1635,18 @@
           "notNull": true,
           "default": false
         },
+        "inbox_code": {
+          "name": "inbox_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mailback_password_enc": {
+          "name": "mailback_password_enc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "portal_enabled": {
           "name": "portal_enabled",
           "type": "boolean",
@@ -1562,7 +1687,15 @@
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "practices_inbox_code_unique": {
+          "name": "practices_inbox_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "inbox_code"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

@@ -2,7 +2,7 @@
  * Finding AMFI schemes by name, and linking a practice's entries and SIPs to them.
  * Scheme data is shared (read as the owner); linking happens inside the practice scope.
  */
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "./db/client";
 import { withPractice, type Scope } from "./db/scope";
 import { instruments, sips, transactions } from "./db/schema";
@@ -52,22 +52,35 @@ export async function searchSchemes(query: string, limit = 12): Promise<SchemeHi
 }
 
 /**
- * Suggestions for many typed names at once (the "Match schemes" page): one query for all schemes whose name starts
- * with the same first word (usually the fund house), ranked per name.
+ * Suggestions for many typed names at once (the "Match schemes" page). For each name the database picks a short
+ * list (same first word, usually the fund house, and at least one of its other words), which is then ranked here.
+ * Ranking every scheme of a fund house in the app took seconds of computing; this keeps each name to a few dozen.
  */
 export async function suggestMany(names: string[], perName = 4): Promise<Map<string, { hits: SchemeHit[]; confident: string | null }>> {
-  const firsts = [...new Set(names.map((n) => nameWords(n)[0]).filter((w): w is string => !!w))];
   const out = new Map<string, { hits: SchemeHit[]; confident: string | null }>();
-  if (!firsts.length) return out;
-  const rows = await db()
-    .select(columns)
-    .from(instruments)
-    .where(sql`lower(${instruments.name}) like any (array[${sql.join(firsts.map((w) => sql`${`${escapeLike(w)}%`}`), sql`, `)}]::text[])`);
   const today = todayIst();
-  for (const name of names) {
-    const ranked = rankCandidates(name, rows, today);
-    out.set(name, { hits: ranked.slice(0, perName).map(toHit), confident: confidentMatch(name, ranked)?.id ?? null });
-  }
+  await Promise.all(
+    names.map(async (name) => {
+      const words = [...new Set(nameWords(name))];
+      const [first, ...rest] = words;
+      if (!first) return;
+      const others = rest.sort((a, b) => b.length - a.length).slice(0, 4);
+      const rows = await db()
+        .select(columns)
+        .from(instruments)
+        .where(
+          and(
+            sql`lower(${instruments.name}) like ${`${escapeLike(first)}%`}`,
+            others.length ? or(...others.map((w) => sql`lower(${instruments.name}) like ${`%${escapeLike(w)}%`}`)) : undefined,
+          ),
+        )
+        // Names sharing the most of its words first, so the cut-off never drops the right scheme.
+        .orderBy(sql`(${others.length ? sql.join(others.map((w) => sql`(lower(${instruments.name}) like ${`%${escapeLike(w)}%`})::int`), sql` + `) : sql`0`}) desc`, sql`length(${instruments.name})`)
+        .limit(60);
+      const ranked = rankCandidates(name, rows, today);
+      out.set(name, { hits: ranked.slice(0, perName).map(toHit), confident: confidentMatch(name, ranked)?.id ?? null });
+    }),
+  );
   return out;
 }
 

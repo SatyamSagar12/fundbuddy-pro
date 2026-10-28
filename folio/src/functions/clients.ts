@@ -7,13 +7,14 @@ import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import { withPractice } from "@/server/db/scope";
-import { investors, sips, transactions } from "@/server/db/schema";
+import { investors, transactions } from "@/server/db/schema";
+import { loadSipBook } from "@/server/sip-book";
 import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 import { billingFor } from "@/server/billing";
 import { audit } from "@/server/security";
 import { normaliseTaxId } from "@/server/crypto";
 import { combine, loadHoldings, loadUnmatched } from "@/server/valuation";
-import { clientSchema, EMPTY_CLIENT, type ClientForm } from "@/lib/records";
+import { clientSchema, EMPTY_CLIENT, todayIst, type ClientForm } from "@/lib/records";
 
 type Bank = { accountNo: string | null; bankName: string | null; ifsc: string | null; micr: string | null; branch: string | null };
 type Nominee = { name: string | null; dob: string | null; pan: string | null; mobile: string | null; email: string | null; relation: string | null };
@@ -68,18 +69,7 @@ export const getClient = createServerFn({ method: "GET" })
         .from(transactions)
         .where(eq(transactions.investorId, c.id))
         .orderBy(desc(transactions.tradeDate), desc(transactions.createdAt));
-      const clientSips = await tx
-        .select({
-          id: sips.id,
-          scheme: sips.schemeText,
-          amount: sips.amount,
-          frequency: sips.frequency,
-          startDate: sips.startDate,
-          status: sips.status,
-        })
-        .from(sips)
-        .where(eq(sips.investorId, c.id))
-        .orderBy(desc(sips.startDate));
+      const clientSips = (await loadSipBook(tx, todayIst(), c.id)).rows;
       const holdings = await loadHoldings(tx, c.id);
       const unmatched = await loadUnmatched(tx, c.id);
       return {
@@ -90,7 +80,7 @@ export const getClient = createServerFn({ method: "GET" })
         form,
         createdAt: c.createdAt,
         transactions: txns.map((t) => ({ ...t, amount: Number(t.amount), units: t.units === null ? null : Number(t.units) })),
-        sips: clientSips.map((s) => ({ ...s, amount: Number(s.amount) })),
+        sips: clientSips,
         canDelete: m.role !== "subbroker",
       };
     });

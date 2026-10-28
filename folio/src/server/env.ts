@@ -18,6 +18,10 @@ export type AppEnv = {
   /** Google sign-in (Google Cloud → APIs & Services → Credentials → OAuth client, type "Web application"). */
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  /** Domain of the practices' forwarding addresses (mb-…@INBOUND_DOMAIN), set up in Cloudflare Email Routing. */
+  INBOUND_DOMAIN?: string;
+  /** Shared with the folio-mail Worker: it posts received emails and the scheduled tick with this token. */
+  INBOX_TOKEN?: string;
 };
 
 export function appEnv(): AppEnv {
