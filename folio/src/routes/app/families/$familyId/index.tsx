@@ -4,6 +4,8 @@ import { useState } from "react";
 import { deleteFamily, getFamily } from "@/functions/families";
 import { Button, Card, linkButtonSecondary, Notice, PageHeader } from "@/components/ui";
 import { HoldingsTable, SummaryTiles } from "@/components/holdings-table";
+import { StatementButton } from "@/components/statement-button";
+import { getStatement } from "@/functions/statement";
 import { ClientAvatar } from "@/components/client-avatar";
 import { day, gainTone, money, percent } from "@/lib/format";
 import { SOMETHING_WRONG } from "@/lib/errors";
@@ -40,6 +42,7 @@ function FamilyPage() {
         subtitle={`${f.head ? `Head: ${f.head.name} · ` : ""}${f.members.length} member${f.members.length === 1 ? "" : "s"}`}
         action={
           <div className="flex flex-wrap gap-2">
+            <StatementButton load={() => getStatement({ data: { family: f.id } })} />
             <Link to="/app/capital-gains" search={{ family: f.id }} className={linkButtonSecondary}>
               <Landmark size={16} /> Capital gains
             </Link>

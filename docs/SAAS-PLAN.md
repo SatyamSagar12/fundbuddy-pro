@@ -380,7 +380,7 @@ Father's data migration:
 | 1 | Environment (Cloudflare Workers + Postgres in Mumbai + Hyperdrive + CI), sign-up, optional authenticator + recovery codes, password reset, practices + RLS, encryption, team and sub-brokers, UPI billing, platform console, father's data import. **Done**: see `folio/README.md` | 2 weeks |
 | 2 | Scheme master + daily NAV, valuation, XIRR; CAMS/KFintech file parsers (upload); CAS PDF import. **Done**: see `folio/README.md`. Still to check against real files | 2 weeks |
 | 3 | Forwarding address + automatic ingest; SIP book; morning briefing (app + WhatsApp/email) | 1–2 weeks |
-| 4 | Families; branded PDF reports, monthly auto-statements, client portal (OTP), capital gains. **In progress** on `claude/folio-phase4`: families and capital gains done | 2 weeks |
+| 4 | Families; branded PDF reports, monthly auto-statements, client portal (OTP), capital gains. **In progress** on `claude/folio-phase4`: families, capital gains and branded PDF statements done | 2 weeks |
 | — | **Beta with father + 5–10 MFDs he knows** | |
 | 5 | v2: opportunity radar, tax harvesting, brokerage, AI connector | as demand shows |
 

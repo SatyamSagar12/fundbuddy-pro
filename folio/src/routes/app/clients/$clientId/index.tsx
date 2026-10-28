@@ -5,6 +5,8 @@ import { deleteClient, getClient } from "@/functions/clients";
 import { clientFamily, setClientFamily } from "@/functions/families";
 import { Button, Card, linkButtonSecondary, Notice, PageHeader } from "@/components/ui";
 import { HoldingsTable, SummaryTiles } from "@/components/holdings-table";
+import { StatementButton } from "@/components/statement-button";
+import { getStatement } from "@/functions/statement";
 import { day, gainTone, money, percent, txnType, units } from "@/lib/format";
 import { shownReturn } from "@/lib/holdings";
 import { SOMETHING_WRONG } from "@/lib/errors";
@@ -55,6 +57,7 @@ function ClientPage() {
         subtitle={[f.mobile, f.email].filter(Boolean).join(" · ") || undefined}
         action={
           <div className="flex flex-wrap gap-2">
+            <StatementButton load={() => getStatement({ data: { client: c.id } })} />
             <Link to="/app/capital-gains" search={{ client: c.id }} className={linkButtonSecondary}>
               <Landmark size={16} /> Capital gains
             </Link>

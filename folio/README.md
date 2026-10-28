@@ -199,9 +199,24 @@ npx tsx scripts/e2e-import.ts                                             # brow
   - Losses are set off only within the same kind here; the tax return allows more. Sales before 1 Apr 2017 aren't
     covered.
 
+- **Branded PDF statement** for one client or one family: **PDF statement** on their page (**Share PDF** on a
+  phone).
+  - Contents: current value, invested, gain and XIRR (or plain return); every holding; schemes not valued yet;
+    active and paused SIPs; transactions of the last 12 months. In a family, each row says whose it is.
+  - Branding: the practice's name, ARN and EUIN (Settings → Practice) in an olive band on top. The AMFI disclaimer
+    ("Mutual Fund investments are subject to market risks, read all scheme related documents carefully.") and
+    page numbers are on every page.
+  - Made in the browser with pdf-lib (`src/lib/statement-pdf.ts`). The library is a separate file (about 180 KB
+    compressed), fetched only on the first press, so pages don't get heavier.
+  - On a phone or tablet the PDF goes to the share sheet (Web Share API), so it can go straight to WhatsApp. On
+    a computer it downloads.
+  - The built-in PDF font has no ₹ sign, so amounts read "Rs 1,23,456". Names in other scripts (e.g. Hindi)
+    show as "?" for now; a Hindi statement needs an embedded font.
+
 ```sh
 npx tsx scripts/e2e-families.ts     # browser test: families (needs NAVs: npx tsx scripts/nav-import.ts)
 npx tsx scripts/e2e-gains.ts        # browser test: capital gains (also needs internet, for mfapi.in)
+npx tsx scripts/e2e-statement.ts    # browser test: PDF statement (download, phone share, lazy loading)
 ```
 
 ## Look and feel
