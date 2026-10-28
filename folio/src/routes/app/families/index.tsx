@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Crown, Plus } from "lucide-react";
+import { Crown, Plus, Smartphone } from "lucide-react";
 import { listFamilies } from "@/functions/families";
-import { Card, EmptyState, linkButton, order, PageHeader } from "@/components/ui";
+import { Card, EmptyState, linkButton, linkButtonSecondary, order, PageHeader } from "@/components/ui";
 import { ClientsTabs } from "@/components/clients-tabs";
 import { downloadCsv } from "@/lib/csv";
 import { gainTone, money, percent } from "@/lib/format";
@@ -14,6 +14,7 @@ export const Route = createFileRoute("/app/families/")({
 
 function FamiliesPage() {
   const { families, notInFamily } = Route.useLoaderData();
+  const { me } = Route.useRouteContext();
   const people = families.reduce((s, f) => s + f.members.length, 0);
 
   return (
@@ -48,6 +49,11 @@ function FamiliesPage() {
               >
                 Export CSV
               </button>
+            )}
+            {me.role !== "subbroker" && (
+              <Link to="/app/portal" className={linkButtonSecondary}>
+                <Smartphone size={16} /> Client portal
+              </Link>
             )}
             <Link to="/app/families/new" className={linkButton}>
               <Plus size={18} /> New family

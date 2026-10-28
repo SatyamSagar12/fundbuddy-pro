@@ -54,8 +54,11 @@ export const practices = pgTable("practices", {
   status: text("status").notNull().default("active"),
   /** The owner can make an authenticator app compulsory for everyone in the practice. Off by default. */
   requireTotp: boolean("require_totp").notNull().default(false),
+  /** Client portal: clients sign in at /c/<portal_code> with a code sent to their email. Off until the owner turns it on. */
+  portalEnabled: boolean("portal_enabled").notNull().default(false),
+  portalCode: text("portal_code"),
   createdAt: createdAt(),
-});
+}, (t) => [uniqueIndex("practices_portal_code_key").on(t.portalCode)]);
 
 export const users = pgTable(
   "users",
@@ -152,6 +155,50 @@ export const recoveryCodes = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("recovery_codes_hash_key").on(t.codeHash), index("recovery_codes_user_idx").on(t.userId)],
+);
+
+/**
+ * Client portal sign-in codes (6 digits, emailed). Only an HMAC is stored; a code works once, for 10 minutes,
+ * with 5 tries. Read and written only by the server's sign-in code (owner role), like `sessions`.
+ */
+export const portalCodes = pgTable(
+  "portal_codes",
+  {
+    id: id(),
+    practiceId: uuid("practice_id")
+      .notNull()
+      .references(() => practices.id, { onDelete: "cascade" }),
+    /** Lower-case. */
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("portal_codes_lookup_idx").on(t.practiceId, t.email, t.createdAt)],
+);
+
+/**
+ * Client portal sessions: a different kind from team sessions, with their own cookie. A session names a practice and
+ * an email; which clients it may see is worked out again on every request, so a changed email or family takes
+ * effect at once. `id` is the HMAC of the cookie token.
+ */
+export const portalSessions = pgTable(
+  "portal_sessions",
+  {
+    id: text("id").primaryKey(),
+    practiceId: uuid("practice_id")
+      .notNull()
+      .references(() => practices.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    createdAt: createdAt(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+  },
+  (t) => [index("portal_sessions_practice_idx").on(t.practiceId, t.email)],
 );
 
 /** Invitations to join a practice. `id` is the HMAC of the emailed token. */
@@ -308,6 +355,8 @@ export const investors = pgTable(
     index("investors_tax_id_hash_idx").on(t.practiceId, t.taxIdHash),
     uniqueIndex("investors_legacy_key").on(t.practiceId, t.legacyId),
     index("investors_family_idx").on(t.familyId),
+    // Client portal sign-in finds clients by email.
+    index("investors_email_idx").on(t.practiceId, sql`lower(${t.email})`),
   ],
 );
 

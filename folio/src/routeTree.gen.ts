@@ -17,6 +17,7 @@ import { Route as LockedRouteImport } from './routes/locked'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NoAccessRouteImport } from './routes/no-access'
 import { Route as PlatformRouteImport } from './routes/platform'
+import { Route as PortalRouteImport } from './routes/portal'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
@@ -24,10 +25,12 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppCapitalGainsRouteImport } from './routes/app/capital-gains'
 import { Route as AppImportRouteImport } from './routes/app/import'
 import { Route as AppInvestmentsRouteImport } from './routes/app/investments'
+import { Route as AppPortalRouteImport } from './routes/app/portal'
 import { Route as AppReportsRouteImport } from './routes/app/reports'
 import { Route as AppSchemesRouteImport } from './routes/app/schemes'
 import { Route as AppSettingsRouteRouteImport } from './routes/app/settings/route'
 import { Route as AppSipsRouteImport } from './routes/app/sips'
+import { Route as CCodeRouteImport } from './routes/c/$code'
 import { Route as DevOutboxRouteImport } from './routes/dev/outbox'
 import { Route as TwoFactorIndexRouteImport } from './routes/two-factor/index'
 import { Route as TwoFactorSetupRouteImport } from './routes/two-factor/setup'
@@ -86,6 +89,11 @@ const PlatformRoute = PlatformRouteImport.update({
   path: '/platform',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -121,6 +129,11 @@ const AppInvestmentsRoute = AppInvestmentsRouteImport.update({
   path: '/investments',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppPortalRoute = AppPortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppReportsRoute = AppReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -140,6 +153,11 @@ const AppSipsRoute = AppSipsRouteImport.update({
   id: '/sips',
   path: '/sips',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const CCodeRoute = CCodeRouteImport.update({
+  id: '/c/$code',
+  path: '/c/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DevOutboxRoute = DevOutboxRouteImport.update({
   id: '/dev/outbox',
@@ -237,6 +255,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/no-access': typeof NoAccessRoute
   '/platform': typeof PlatformRoute
+  '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -244,9 +263,11 @@ export interface FileRoutesByFullPath {
   '/app/capital-gains': typeof AppCapitalGainsRoute
   '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
+  '/app/portal': typeof AppPortalRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schemes': typeof AppSchemesRoute
   '/app/sips': typeof AppSipsRoute
+  '/c/$code': typeof CCodeRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
   '/app/': typeof AppIndexRoute
@@ -274,15 +295,18 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/no-access': typeof NoAccessRoute
   '/platform': typeof PlatformRoute
+  '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/capital-gains': typeof AppCapitalGainsRoute
   '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
+  '/app/portal': typeof AppPortalRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schemes': typeof AppSchemesRoute
   '/app/sips': typeof AppSipsRoute
+  '/c/$code': typeof CCodeRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
   '/app': typeof AppIndexRoute
@@ -312,6 +336,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/no-access': typeof NoAccessRoute
   '/platform': typeof PlatformRoute
+  '/portal': typeof PortalRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -319,9 +344,11 @@ export interface FileRoutesById {
   '/app/capital-gains': typeof AppCapitalGainsRoute
   '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
+  '/app/portal': typeof AppPortalRoute
   '/app/reports': typeof AppReportsRoute
   '/app/schemes': typeof AppSchemesRoute
   '/app/sips': typeof AppSipsRoute
+  '/c/$code': typeof CCodeRoute
   '/dev/outbox': typeof DevOutboxRoute
   '/two-factor/setup': typeof TwoFactorSetupRoute
   '/app/': typeof AppIndexRoute
@@ -352,6 +379,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/no-access'
     | '/platform'
+    | '/portal'
     | '/reset-password'
     | '/signup'
     | '/verify-email'
@@ -359,9 +387,11 @@ export interface FileRouteTypes {
     | '/app/capital-gains'
     | '/app/import'
     | '/app/investments'
+    | '/app/portal'
     | '/app/reports'
     | '/app/schemes'
     | '/app/sips'
+    | '/c/$code'
     | '/dev/outbox'
     | '/two-factor/setup'
     | '/app/'
@@ -389,15 +419,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/no-access'
     | '/platform'
+    | '/portal'
     | '/reset-password'
     | '/signup'
     | '/verify-email'
     | '/app/capital-gains'
     | '/app/import'
     | '/app/investments'
+    | '/app/portal'
     | '/app/reports'
     | '/app/schemes'
     | '/app/sips'
+    | '/c/$code'
     | '/dev/outbox'
     | '/two-factor/setup'
     | '/app'
@@ -426,6 +459,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/no-access'
     | '/platform'
+    | '/portal'
     | '/reset-password'
     | '/signup'
     | '/verify-email'
@@ -433,9 +467,11 @@ export interface FileRouteTypes {
     | '/app/capital-gains'
     | '/app/import'
     | '/app/investments'
+    | '/app/portal'
     | '/app/reports'
     | '/app/schemes'
     | '/app/sips'
+    | '/c/$code'
     | '/dev/outbox'
     | '/two-factor/setup'
     | '/app/'
@@ -465,9 +501,11 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   NoAccessRoute: typeof NoAccessRoute
   PlatformRoute: typeof PlatformRoute
+  PortalRoute: typeof PortalRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  CCodeRoute: typeof CCodeRoute
   DevOutboxRoute: typeof DevOutboxRoute
   TwoFactorSetupRoute: typeof TwoFactorSetupRoute
   TwoFactorIndexRoute: typeof TwoFactorIndexRoute
@@ -533,6 +571,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlatformRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -582,6 +627,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInvestmentsRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/portal': {
+      id: '/app/portal'
+      path: '/portal'
+      fullPath: '/app/portal'
+      preLoaderRoute: typeof AppPortalRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/reports': {
       id: '/app/reports'
       path: '/reports'
@@ -609,6 +661,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/sips'
       preLoaderRoute: typeof AppSipsRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/c/$code': {
+      id: '/c/$code'
+      path: '/c/$code'
+      fullPath: '/c/$code'
+      preLoaderRoute: typeof CCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dev/outbox': {
       id: '/dev/outbox'
@@ -754,6 +813,7 @@ interface AppRouteRouteChildren {
   AppCapitalGainsRoute: typeof AppCapitalGainsRoute
   AppImportRoute: typeof AppImportRoute
   AppInvestmentsRoute: typeof AppInvestmentsRoute
+  AppPortalRoute: typeof AppPortalRoute
   AppReportsRoute: typeof AppReportsRoute
   AppSchemesRoute: typeof AppSchemesRoute
   AppSipsRoute: typeof AppSipsRoute
@@ -773,6 +833,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppCapitalGainsRoute: AppCapitalGainsRoute,
   AppImportRoute: AppImportRoute,
   AppInvestmentsRoute: AppInvestmentsRoute,
+  AppPortalRoute: AppPortalRoute,
   AppReportsRoute: AppReportsRoute,
   AppSchemesRoute: AppSchemesRoute,
   AppSipsRoute: AppSipsRoute,
@@ -800,9 +861,11 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   NoAccessRoute: NoAccessRoute,
   PlatformRoute: PlatformRoute,
+  PortalRoute: PortalRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  CCodeRoute: CCodeRoute,
   DevOutboxRoute: DevOutboxRoute,
   TwoFactorSetupRoute: TwoFactorSetupRoute,
   TwoFactorIndexRoute: TwoFactorIndexRoute,

@@ -1,8 +1,9 @@
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
-import { Crown, Landmark, Pencil, Plus, Trash2, UsersRound } from "lucide-react";
+import { Crown, Landmark, Mail, Pencil, Plus, Smartphone, Trash2, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { deleteClient, getClient } from "@/functions/clients";
 import { clientFamily, setClientFamily } from "@/functions/families";
+import { portalOn, sendPortalLink } from "@/functions/portal";
 import { Button, Card, linkButtonSecondary, Notice, PageHeader } from "@/components/ui";
 import { HoldingsTable, SummaryTiles } from "@/components/holdings-table";
 import { StatementButton } from "@/components/statement-button";
@@ -13,9 +14,9 @@ import { SOMETHING_WRONG } from "@/lib/errors";
 
 export const Route = createFileRoute("/app/clients/$clientId/")({
   loader: async ({ params }) => {
-    const [c, family] = await Promise.all([getClient({ data: { id: params.clientId } }), clientFamily({ data: { id: params.clientId } })]);
+    const [c, family, portal] = await Promise.all([getClient({ data: { id: params.clientId } }), clientFamily({ data: { id: params.clientId } }), portalOn()]);
     if (!c) throw notFound();
-    return { ...c, family };
+    return { ...c, family, portal };
   },
   head: ({ loaderData }) => ({ meta: [{ title: `${loaderData?.form.name ?? "Client"} · Anqulas Folio` }] }),
   component: ClientPage,
@@ -100,6 +101,7 @@ function ClientPage() {
       </Card>
 
       {c.family && <FamilyCard clientId={c.id} name={f.name} family={c.family} />}
+      <PortalCard clientId={c.id} name={f.name} email={f.email} portal={c.portal} />
 
       <div className="grid gap-5 lg:grid-cols-3">
         <Card>
@@ -284,6 +286,54 @@ function FamilyCard({ clientId, name, family }: { clientId: string; name: string
       {error && (
         <div className="mt-3">
           <Notice tone="error">{error}</Notice>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/** Emails the client the portal link; or, while the portal is off, says where to turn it on. */
+function PortalCard({ clientId, name, email, portal }: { clientId: string; name: string; email: string; portal: { enabled: boolean; canManage: boolean } }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ tone: "good" | "error"; text: string } | null>(null);
+
+  async function send() {
+    setBusy(true);
+    const res = await sendPortalLink({ data: { investorId: clientId } }).catch(() => ({ ok: false as const, error: SOMETHING_WRONG }));
+    setBusy(false);
+    setMsg(res.ok ? { tone: "good", text: `Sent to ${res.to}.` } : { tone: "error", text: res.error });
+  }
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <Smartphone size={18} className="text-bronze" /> Client portal
+          </h2>
+          <p className="mt-1 text-[15px] text-muted">
+            {!portal.enabled
+              ? "Let clients see their portfolio on their phone, branded as yours."
+              : email
+                ? `${name} signs in with ${email}.`
+                : `Add ${name}'s email to let them sign in.`}
+          </p>
+        </div>
+        {portal.enabled && email ? (
+          <Button variant="secondary" disabled={busy} onClick={() => void send()}>
+            <Mail size={16} /> {busy ? "Sending…" : "Email them the link"}
+          </Button>
+        ) : (
+          portal.canManage && (
+            <Link to="/app/portal" className={linkButtonSecondary}>
+              {portal.enabled ? "Portal settings" : "Set up the portal"}
+            </Link>
+          )
+        )}
+      </div>
+      {msg && (
+        <div className="mt-3">
+          <Notice tone={msg.tone}>{msg.text}</Notice>
         </div>
       )}
     </Card>

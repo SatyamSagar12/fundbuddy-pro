@@ -28,3 +28,21 @@ export async function withPractice<T>(scope: Scope, fn: (tx: Tx) => Promise<T>):
     return fn(tx);
   });
 }
+
+/** A signed-in client of the portal: their practice and the clients they may see (themselves and their family). */
+export type InvestorScope = { practiceId: string; investorIds: readonly string[] };
+
+/**
+ * Client portal access: the read-only role `folio_portal` (migration 0011), which sees only the rows of these
+ * clients, can't change anything, and can't read encrypted PAN, bank or nominee details at all.
+ */
+export async function withInvestors<T>(scope: InvestorScope, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  if (!UUID.test(scope.practiceId)) throw new Error("Invalid scope");
+  if (!scope.investorIds.length || !scope.investorIds.every((id) => UUID.test(id))) throw new Error("Invalid scope");
+  return db().transaction(async (tx) => {
+    await tx.execute(sql`SET LOCAL ROLE folio_portal`);
+    await tx.execute(sql`SELECT set_config('app.practice_id', ${scope.practiceId}, true),
+                                set_config('app.investor_ids', ${`{${scope.investorIds.join(",")}}`}, true)`);
+    return fn(tx);
+  });
+}

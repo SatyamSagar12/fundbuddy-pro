@@ -158,7 +158,7 @@ npx tsx scripts/e2e-nav.ts                                                # brow
 npx tsx scripts/e2e-import.ts                                             # browser test: registrar and CAS imports
 ```
 
-## Phase 4 (in progress): families, capital gains, client statements, client portal
+## Phase 4 (built on `claude/folio-phase4`): families, capital gains, client statements, client portal
 
 - **Families** (Clients → **Families**).
   - A family groups clients under a head, for example husband, wife and parents.
@@ -213,10 +213,35 @@ npx tsx scripts/e2e-import.ts                                             # brow
   - The built-in PDF font has no ₹ sign, so amounts read "Rs 1,23,456". Names in other scripts (e.g. Hindi)
     show as "?" for now; a Hindi statement needs an embedded font.
 
+- **Client portal** (read-only). Families → **Client portal** (`/app/portal`), owners and staff.
+  - The owner turns it on and gets the practice's link, `<site>/c/<code>`, to copy or share on WhatsApp. A client's
+    page can also email that client the link. Turning it off signs every client out at once and the link stops
+    working.
+  - The client opens the link (branded with the practice's name, ARN and EUIN, and the AMFI disclaimer), enters
+    the email on their client record and gets a **6-digit code** by email. SMS can come later.
+  - They see their own and their family's portfolio: value, invested, gain, XIRR, holdings, SIPs, the last 12
+    months, and the same PDF statement. Nothing can be changed. No PAN, bank or nominee details are shown.
+  - **Who sees what:** the clients with that email, and everyone in their family. Worked out again on every page,
+    so a changed email or family applies at once. An email that's on clients of different families can't sign in
+    at all; the portal page lists such emails so they can be fixed.
+  - **Protections:**
+    - A separate session type (table `portal_sessions`, cookie `__Host-folio_portal`): a portal session never opens
+      a team page. Sessions end after 3 days idle or 14 days in total.
+    - Codes are stored only as an HMAC, work for 10 minutes, once, with 5 tries; asking again replaces the code.
+    - Rate limits: 3 codes per email per 15 minutes (10 a day), 10 per network; 10 code entries per email and 30
+      per network every 15 minutes.
+    - Answers never say whether an email is on the records.
+    - **Database wall** (migration 0011): portal requests run as their own role, `folio_portal`, scoped by
+      `app.investor_ids`. It may only read, only those clients' rows, and on `investors` only the id, name and
+      family columns; it can't read encrypted details, notes or any account table. `test/portal.test.ts` proves
+      a client can't see another client's or another practice's rows, nor change anything.
+  - Email must be working (SES) for clients to get codes; the portal page warns when it isn't.
+
 ```sh
 npx tsx scripts/e2e-families.ts     # browser test: families (needs NAVs: npx tsx scripts/nav-import.ts)
 npx tsx scripts/e2e-gains.ts        # browser test: capital gains (also needs internet, for mfapi.in)
 npx tsx scripts/e2e-statement.ts    # browser test: PDF statement (download, phone share, lazy loading)
+npx tsx scripts/e2e-portal.ts       # browser test: client portal (codes come from /dev/outbox)
 ```
 
 ## Look and feel
