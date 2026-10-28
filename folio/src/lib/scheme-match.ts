@@ -24,9 +24,16 @@ export function nameWords(name: string): string[] {
   return words;
 }
 
-function splitWords(name: string): string[] {
-  return name
-    .toLowerCase()
+/**
+ * Old names that fund houses renamed across the board: most "Bluechip" funds are now "Large Cap" funds
+ * (ICICI Prudential, SBI, Kotak, Franklin India…). Used for suggestions; automatic linking still needs the exact name.
+ */
+const RENAMED: [RegExp, string][] = [[/\bblue\s*-?\s*chip\b/g, "large cap"]];
+
+function splitWords(name: string, renamed = true): string[] {
+  let text = name.toLowerCase();
+  if (renamed) for (const [from, to] of RENAMED) text = text.replace(from, to);
+  return text
     .replace(/\(.*?\)/g, " ")
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ")
@@ -37,6 +44,11 @@ function splitWords(name: string): string[] {
 /** The words that make a scheme what it is, with plan and option words left out. */
 export function baseName(name: string): string {
   return nameWords(name).join(" ");
+}
+
+/** The name's own words, without reading old names as new ones. */
+export function literalWords(name: string): string[] {
+  return splitWords(name, false);
 }
 
 export type Candidate = { id: string; name: string; plan: string | null; option: string | null; latestNavDate: string | null };
@@ -81,7 +93,7 @@ export function rankCandidates<T extends Candidate>(query: string, candidates: T
  */
 export function confidentMatch<T extends Candidate>(query: string, ranked: (T & { score: number })[]): T | null {
   const [best, next] = ranked;
-  if (!best || best.score < 0.95 || baseName(query) !== baseName(best.name)) return null;
+  if (!best || best.score < 0.95 || literalWords(query).join(" ") !== literalWords(best.name).join(" ")) return null;
   if (next && next.score >= best.score) return null;
   return best;
 }

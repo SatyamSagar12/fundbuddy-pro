@@ -7,7 +7,7 @@ import { db } from "./db/client";
 import { withPractice, type Scope } from "./db/scope";
 import { instruments, sips, transactions } from "./db/schema";
 import { fillUnits } from "./nav";
-import { confidentMatch, nameWords, rankCandidates, searchWords } from "@/lib/scheme-match";
+import { confidentMatch, literalWords, nameWords, rankCandidates, searchWords } from "@/lib/scheme-match";
 import { todayIst } from "@/lib/records";
 
 const columns = {
@@ -62,9 +62,10 @@ export async function suggestMany(names: string[], perName = 4): Promise<Map<str
   await Promise.all(
     names.map(async (name) => {
       const words = [...new Set(nameWords(name))];
-      const [first, ...rest] = words;
+      const [first] = words;
       if (!first) return;
-      const others = rest.sort((a, b) => b.length - a.length).slice(0, 4);
+      // Its words, plus the old ones it was renamed from (so "Bluechip" finds both "Large Cap" and "US Bluechip").
+      const others = [...new Set([...words.slice(1), ...literalWords(name).slice(1)])].sort((a, b) => b.length - a.length).slice(0, 5);
       const rows = await db()
         .select(columns)
         .from(instruments)

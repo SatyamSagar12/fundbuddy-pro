@@ -9,7 +9,12 @@ function SettingsLayout() {
   const { me } = Route.useRouteContext();
   const tabs = [
     { to: "/app/settings", label: "Practice", exact: true },
-    ...(me.role !== "subbroker" ? [{ to: "/app/settings/mail", label: "Email import", exact: false }] : []),
+    ...(me.role !== "subbroker"
+      ? [
+          { to: "/app/settings/mail", label: "Email import", exact: false },
+          { to: "/app/portal", label: "Client portal", exact: false },
+        ]
+      : []),
     { to: "/app/settings/team", label: "Team", exact: false },
     { to: "/app/settings/security", label: "Security", exact: false },
     ...(me.role === "owner" ? [{ to: "/app/settings/billing", label: "Billing", exact: false }] : []),

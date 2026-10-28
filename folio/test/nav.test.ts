@@ -68,6 +68,17 @@ describe("AMFI file", () => {
 describe("scheme matching", () => {
   const today = "2026-10-26";
   const all = parseNavAll(NAVALL).map((r, i) => ({ id: String(i), name: r.name, plan: r.plan, option: r.option, latestNavDate: r.navDate }));
+  it("finds a renamed Bluechip fund under its Large Cap name, without linking it on its own", () => {
+    const c = (id: string, name: string) => ({ id, name, plan: "regular", option: "growth", latestNavDate: today });
+    const list = [c("us", "ICICI Prudential US Bluechip Equity Fund - Growth"), c("lc", "ICICI Prudential Large Cap Fund - Growth"), c("v", "ICICI Prudential Value Fund - Growth")];
+    const ranked = rankCandidates("ICICI Prudential Bluechip Fund", list, today);
+    expect(ranked[0]!.id).toBe("lc");
+    expect(confidentMatch("ICICI Prudential Bluechip Fund", ranked)).toBeNull();
+    // Typed exactly, the US fund is still found and linked.
+    const us = rankCandidates("ICICI Prudential US Bluechip Equity Fund", list, today);
+    expect(confidentMatch("ICICI Prudential US Bluechip Equity Fund", us)?.id).toBe("us");
+  });
+
   it("ignores plan, option and punctuation words", () => {
     expect(baseName("HDFC Flexi Cap Fund - Growth Option - Direct Plan")).toBe("hdfc flexi cap");
     expect(baseName("ICICI Prudential Equity & Debt Fund (formerly Balanced)")).toBe("icici prudential equity and debt");

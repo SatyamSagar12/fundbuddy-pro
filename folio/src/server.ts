@@ -14,6 +14,7 @@ import { ensureReady, maintenance } from "./server/maintenance";
 import { refreshIfDue, runNavJobs } from "./server/nav";
 import { sendBriefingsIfDue } from "./server/briefing-mail";
 import { deleteOldInbox, inboxEndpoint } from "./server/inbox";
+import { deleteExpiredPortalRows } from "./server/portal";
 
 type Env = { HYPERDRIVE: Hyperdrive; MIGRATE_TOKEN?: string; INBOX_TOKEN?: string; PLATFORM_ADMIN_EMAILS?: string };
 
@@ -68,6 +69,7 @@ export default {
       await deleteExpiredSessions();
       await deleteOldRateLimits();
       await deleteOldInbox().catch((e) => console.error("Inbox housekeeping failed:", e));
+      await deleteExpiredPortalRows().catch((e) => console.error("Portal housekeeping failed:", e));
       // AMFI publishes by about 11 pm IST (17:30 UTC): import at the 18:17 UTC run.
       if (new Date(event.scheduledTime).getUTCHours() === 18) await runNavJobs().catch((e) => console.error("NAV import failed:", e));
       await sendBriefingsIfDue().catch((e) => console.error("Morning briefing failed:", e));

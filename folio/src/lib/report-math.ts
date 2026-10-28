@@ -2,6 +2,7 @@
  * Report numbers, from the old FundVault app: monthly SIP vs one-time flow, Indian financial-year totals,
  * top schemes, monthly SIP commitment. Redemptions are left out of inflow figures.
  */
+import { monthlyAmount } from "./sip-book";
 export type Entry = { type: string; amount: number; date: string; scheme: string | null };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -69,7 +70,7 @@ export function topSchemes(entries: Entry[], limit = 5): { scheme: string; amoun
 
 /** Active SIPs per month, quarterly ones divided by 3. */
 export function monthlySipCommitment(list: { amount: number; frequency: string; status: string }[]): number {
-  return list.filter((s) => s.status === "active").reduce((sum, s) => sum + s.amount / (s.frequency === "quarterly" ? 3 : 1), 0);
+  return list.filter((s) => s.status === "active").reduce((sum, s) => sum + monthlyAmount(s.amount, s.frequency), 0);
 }
 
 /** Short rupees for chart axes: ₹12.5L, ₹3.2Cr. */

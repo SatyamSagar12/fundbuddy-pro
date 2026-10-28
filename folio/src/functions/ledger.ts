@@ -172,14 +172,16 @@ export const getReportData = createServerFn({ method: "GET" })
         .select({ type: transactions.type, amount: transactions.amount, date: transactions.tradeDate, scheme: transactions.schemeText })
         .from(transactions)
         .where(data.client ? eq(transactions.investorId, data.client) : undefined);
-      const sipRows = await tx
-        .select({ amount: sips.amount, frequency: sips.frequency, status: sips.status })
-        .from(sips)
-        .where(data.client ? eq(sips.investorId, data.client) : undefined);
+      // The SIP book (registrar data and typed SIPs); a bounced SIP still counts as running.
+      const sipRows = (await loadSipBook(tx, todayIst(), data.client)).rows.map((r) => ({
+        amount: r.amount,
+        frequency: r.frequency,
+        status: r.status === "bounced" ? "active" : r.status,
+      }));
       const clients = await tx.select({ id: investors.id, name: investors.name }).from(investors).orderBy(asc(investors.name));
       return {
         entries: entries.map((e) => ({ ...e, amount: Number(e.amount) })),
-        sips: sipRows.map((s) => ({ ...s, amount: Number(s.amount) })),
+        sips: sipRows,
         clients,
       };
     });

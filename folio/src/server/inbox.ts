@@ -26,6 +26,7 @@ import type { Member } from "./member";
 import { applyImport } from "./registrar-import";
 import { refreshIfDue } from "./nav";
 import { sendBriefingsIfDue } from "./briefing-mail";
+import { deleteExpiredPortalRows } from "./portal";
 import { readTables, TableError, ZipError } from "@/lib/imports/tables";
 import { isZip, readZip } from "@/lib/imports/zip";
 import { readFeed } from "@/lib/imports/feed";
@@ -305,6 +306,7 @@ export async function inboxEndpoint(request: Request, env: { INBOX_TOKEN?: strin
     const nav = await refreshIfDue().catch((e) => ({ error: String(e) }));
     const briefings = await sendBriefingsIfDue().catch((e) => ({ error: String(e) }));
     await deleteOldInbox().catch((e) => console.error("Inbox housekeeping failed:", e));
+    await deleteExpiredPortalRows().catch((e) => console.error("Portal housekeeping failed:", e));
     return new Response(JSON.stringify({ nav, briefings }), { headers: { "content-type": "application/json" } });
   }
   const size = Number(request.headers.get("content-length") ?? 0);

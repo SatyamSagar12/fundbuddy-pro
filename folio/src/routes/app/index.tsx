@@ -64,6 +64,9 @@ function HomePage() {
           <Link to="/app/clients" className={linkButtonSecondary}>
             All clients
           </Link>
+          <Link to="/app/families" className={linkButtonSecondary}>
+            Families
+          </Link>
           <Link to="/app/investments" search={{ add: true }} className={linkButton}>
             <Plus size={17} /> Add investment
           </Link>
