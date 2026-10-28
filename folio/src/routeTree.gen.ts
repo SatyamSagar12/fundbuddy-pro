@@ -34,6 +34,7 @@ import { Route as AppClientsIndexRouteImport } from './routes/app/clients/index'
 import { Route as AppClientsNewRouteImport } from './routes/app/clients/new'
 import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
 import { Route as AppSettingsBillingRouteImport } from './routes/app/settings/billing'
+import { Route as AppSettingsMailRouteImport } from './routes/app/settings/mail'
 import { Route as AppSettingsSecurityRouteImport } from './routes/app/settings/security'
 import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
 import { Route as AuthGoogleIndexRouteImport } from './routes/auth/google/index'
@@ -166,6 +167,11 @@ const AppSettingsBillingRoute = AppSettingsBillingRouteImport.update({
   path: '/billing',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
+const AppSettingsMailRoute = AppSettingsMailRouteImport.update({
+  id: '/mail',
+  path: '/mail',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
 const AppSettingsSecurityRoute = AppSettingsSecurityRouteImport.update({
   id: '/security',
   path: '/security',
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/two-factor/': typeof TwoFactorIndexRoute
   '/app/clients/new': typeof AppClientsNewRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/mail': typeof AppSettingsMailRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByTo {
   '/two-factor': typeof TwoFactorIndexRoute
   '/app/clients/new': typeof AppClientsNewRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/mail': typeof AppSettingsMailRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/two-factor/': typeof TwoFactorIndexRoute
   '/app/clients/new': typeof AppClientsNewRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
+  '/app/settings/mail': typeof AppSettingsMailRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/two-factor/'
     | '/app/clients/new'
     | '/app/settings/billing'
+    | '/app/settings/mail'
     | '/app/settings/security'
     | '/app/settings/team'
     | '/auth/google/callback'
@@ -352,6 +362,7 @@ export interface FileRouteTypes {
     | '/two-factor'
     | '/app/clients/new'
     | '/app/settings/billing'
+    | '/app/settings/mail'
     | '/app/settings/security'
     | '/app/settings/team'
     | '/auth/google/callback'
@@ -385,6 +396,7 @@ export interface FileRouteTypes {
     | '/two-factor/'
     | '/app/clients/new'
     | '/app/settings/billing'
+    | '/app/settings/mail'
     | '/app/settings/security'
     | '/app/settings/team'
     | '/auth/google/callback'
@@ -591,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsBillingRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
+    '/app/settings/mail': {
+      id: '/app/settings/mail'
+      path: '/mail'
+      fullPath: '/app/settings/mail'
+      preLoaderRoute: typeof AppSettingsMailRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
     '/app/settings/security': {
       id: '/app/settings/security'
       path: '/security'
@@ -638,6 +657,7 @@ declare module '@tanstack/react-router' {
 
 interface AppSettingsRouteRouteChildren {
   AppSettingsBillingRoute: typeof AppSettingsBillingRoute
+  AppSettingsMailRoute: typeof AppSettingsMailRoute
   AppSettingsSecurityRoute: typeof AppSettingsSecurityRoute
   AppSettingsTeamRoute: typeof AppSettingsTeamRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
@@ -645,6 +665,7 @@ interface AppSettingsRouteRouteChildren {
 
 const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
   AppSettingsBillingRoute: AppSettingsBillingRoute,
+  AppSettingsMailRoute: AppSettingsMailRoute,
   AppSettingsSecurityRoute: AppSettingsSecurityRoute,
   AppSettingsTeamRoute: AppSettingsTeamRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,

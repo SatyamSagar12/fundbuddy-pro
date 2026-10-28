@@ -379,7 +379,7 @@ Father's data migration:
 | 0 | Lock down current app (section 0) | 15 min, today |
 | 1 | Environment (Cloudflare Workers + Postgres in Mumbai + Hyperdrive + CI), sign-up, optional authenticator + recovery codes, password reset, practices + RLS, encryption, team and sub-brokers, UPI billing, platform console, father's data import. **Done**: see `folio/README.md` | 2 weeks |
 | 2 | Scheme master + daily NAV, valuation, XIRR; CAMS/KFintech file parsers (upload); CAS PDF import. **Done**: see `folio/README.md`. Still to check against real files | 2 weeks |
-| 3 | Forwarding address + automatic ingest; SIP book; morning briefing (app + WhatsApp/email) | 1–2 weeks |
+| 3 | Forwarding address + automatic ingest; SIP book; morning briefing (app + WhatsApp/email). **Built**: see `folio/README.md`. Email import goes live once the receiving domain is set up; WhatsApp sending later (one-tap WhatsApp buttons now) | 1–2 weeks |
 | 4 | Branded PDF reports, monthly auto-statements, client portal (OTP), capital gains | 2 weeks |
 | — | **Beta with father + 5–10 MFDs he knows** | |
 | 5 | v2: opportunity radar, tax harvesting, brokerage, AI connector | as demand shows |

@@ -54,6 +54,10 @@ export const practices = pgTable("practices", {
   status: text("status").notNull().default("active"),
   /** The owner can make an authenticator app compulsory for everyone in the practice. Off by default. */
   requireTotp: boolean("require_totp").notNull().default(false),
+  /** The private part of the practice's forwarding address (<code>@<inbound domain>), made on first use. */
+  inboxCode: text("inbox_code").unique(),
+  /** Password of the registrars' mailback ZIPs, encrypted with the practice's key. */
+  mailbackPasswordEnc: text("mailback_password_enc"),
   createdAt: createdAt(),
 });
 
@@ -91,6 +95,8 @@ export const memberships = pgTable(
     /** owner | staff | subbroker */
     role: text("role").notNull(),
     active: boolean("active").notNull().default(true),
+    /** Gets the morning summary by email. */
+    briefingEmail: boolean("briefing_email").notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("memberships_practice_user_key").on(t.practiceId, t.userId)],
@@ -389,6 +395,30 @@ export const sips = pgTable(
     index("sips_practice_idx").on(t.practiceId, t.status),
     uniqueIndex("sips_legacy_key").on(t.practiceId, t.legacyId),
   ],
+);
+
+/**
+ * Emails received at a practice's forwarding address: registrar mailbacks, and Gmail's forwarding confirmation.
+ * Written by the system; the team can read and delete them (row-level security).
+ */
+export const inboxMessages = pgTable(
+  "inbox_messages",
+  {
+    id: id(),
+    practiceId: practiceId(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    fromAddress: text("from_address").notNull(),
+    subject: text("subject").notNull(),
+    /** mailback | forward_confirm | other */
+    kind: text("kind").notNull(),
+    /** imported | needs_password | failed | ignored | waiting */
+    status: text("status").notNull(),
+    /** Counts, file names, the Gmail confirmation code, or what went wrong. */
+    detail: jsonb("detail").notNull().default({}),
+    /** Attachments kept (encrypted) until they import, so a wrong password can be fixed and retried. */
+    payloadEnc: text("payload_enc"),
+  },
+  (t) => [index("inbox_messages_practice_idx").on(t.practiceId, t.receivedAt)],
 );
 
 /** Append-only: the app role may insert and read its own practice's rows, never change or delete them. */

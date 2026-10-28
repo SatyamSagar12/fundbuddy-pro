@@ -56,3 +56,12 @@ export function hueOf(name: string): number {
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
   return h;
 }
+
+/** Short Indian form for headlines: ₹4.82 Cr, ₹12.5 L, ₹45,000. */
+export function shortMoney(value: number): string {
+  const a = Math.abs(value);
+  const sign = value < 0 ? "−" : "";
+  if (a >= 1e7) return `${sign}₹${(a / 1e7).toFixed(a >= 1e9 ? 0 : 2)} Cr`;
+  if (a >= 1e5) return `${sign}₹${(a / 1e5).toFixed(1)} L`;
+  return `${sign}${money(a)}`;
+}

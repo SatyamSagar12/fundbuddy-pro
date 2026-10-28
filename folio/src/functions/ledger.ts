@@ -6,7 +6,8 @@ import { withPractice } from "@/server/db/scope";
 import { investors, sips, transactions } from "@/server/db/schema";
 import { requireMember, scopeOf } from "@/server/member";
 import { audit } from "@/server/security";
-import { investmentSchema, sipSchema } from "@/lib/records";
+import { investmentSchema, sipSchema, todayIst } from "@/lib/records";
+import { loadSipBook, sipTotals } from "@/server/sip-book";
 import { confidentScheme, fillUnitsSoon, schemeExists } from "@/server/schemes";
 
 /** The scheme to link: the one picked, else a certain match for the typed name, else none (match it later). */
@@ -115,30 +116,13 @@ export const deleteInvestment = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** The SIP book: SIPs found in registrar data plus the ones typed in, each with its live status. */
 export const listSips = createServerFn({ method: "GET" })
   .validator((input: unknown) => filter.parse(input ?? {}))
   .handler(async ({ data }) => {
     const m = await requireMember();
-    const rows = await withPractice(scopeOf(m), (tx) =>
-      tx
-        .select({
-          id: sips.id,
-          investorId: sips.investorId,
-          client: investors.name,
-          scheme: sips.schemeText,
-          instrumentId: sips.instrumentId,
-          amount: sips.amount,
-          frequency: sips.frequency,
-          startDate: sips.startDate,
-          status: sips.status,
-        })
-        .from(sips)
-        .innerJoin(investors, eq(investors.id, sips.investorId))
-        .where(data.client ? eq(sips.investorId, data.client) : undefined)
-        .orderBy(asc(sips.status), desc(sips.startDate))
-        .limit(2000),
-    );
-    return rows.map((r) => ({ ...r, amount: Number(r.amount) }));
+    const book = await withPractice(scopeOf(m), (tx) => loadSipBook(tx, todayIst(), data.client));
+    return { ...book, totals: sipTotals(book.rows) };
   });
 
 export const saveSip = createServerFn({ method: "POST" })
@@ -153,6 +137,7 @@ export const saveSip = createServerFn({ method: "POST" })
       amount: s.amount.toFixed(2),
       frequency: s.frequency,
       startDate: s.startDate,
+      endDate: s.endDate || null,
       status: s.status,
     };
     const saved = await withPractice(scopeOf(m), async (tx) => {

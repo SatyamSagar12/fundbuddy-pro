@@ -43,6 +43,13 @@
       "when": 1793102206309,
       "tag": "0005_nav_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793177921552,
+      "tag": "0006_phase3_inbox",
+      "breakpoints": true
     }
   ]
 }

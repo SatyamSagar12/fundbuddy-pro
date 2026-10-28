@@ -107,7 +107,7 @@ try {
   await p.getByLabel("SIP amount (₹)").fill("5000");
   await p.getByRole("button", { name: "Save" }).click();
   await p.getByText("SIP added.").waitFor();
-  await p.getByText("1 active · ₹5,000 a month").waitFor();
+  await p.getByText("1 running · ₹5,000 a month").waitFor();
   check(true, "SIP added; monthly commitment shown");
 
   await go(p, "/app/investments");

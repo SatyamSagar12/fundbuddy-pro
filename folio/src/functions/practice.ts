@@ -1,25 +1,22 @@
 /** Practice data for the signed-in team member. All client data goes through withPractice (row-level security). */
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { desc, eq, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/server/db/client";
 import { withPractice } from "@/server/db/scope";
-import { auditLog, families, investors, practices, sips, transactions, users } from "@/server/db/schema";
+import { auditLog, families, investors, practices, transactions, users } from "@/server/db/schema";
 import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 import { addSampleData, removeSampleData } from "@/server/sample-data";
-import { combine, loadHoldings, unmatchedSchemeNames } from "@/server/valuation";
+import { loadHoldings, unmatchedSchemeNames } from "@/server/valuation";
+import { loadSipBook } from "@/server/sip-book";
+import { buildBriefing } from "@/server/briefing";
+import { todayIst } from "@/lib/records";
 import { confidentScheme, fillUnitsSoon, linkScheme } from "@/server/schemes";
 
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const m = await requireMember();
   return withPractice(scopeOf(m), async (tx) => {
     const [clients] = await tx.select({ n: sql<number>`count(*)::int` }).from(investors);
-    const [sipStats] = await tx
-      .select({
-        active: sql<number>`count(*) filter (where ${sips.status} = 'active')::int`,
-        monthly: sql<string>`coalesce(sum(case when ${sips.status} <> 'active' then 0 when ${sips.frequency} = 'quarterly' then ${sips.amount} / 3 else ${sips.amount} end), 0)::text`,
-      })
-      .from(sips);
     const [invested] = await tx
       .select({ total: sql<string>`coalesce(sum(${transactions.amount}) filter (where ${transactions.type} in ('purchase', 'sip')), 0)::text` })
       .from(transactions);
@@ -40,16 +37,16 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
       .select({ n: sql<number>`count(*)::int` })
       .from(investors)
       .where(sql`${investors.legacyId} like 'sample:%'`);
-    const total = combine(await loadHoldings(tx));
-    const unmatched = (await unmatchedSchemeNames(tx)).length;
+    const { total, ...briefing } = await buildBriefing(tx, todayIst());
     return {
       total,
-      unmatched,
+      briefing,
+      unmatched: briefing.unmatched,
       hasSample: (sample?.n ?? 0) > 0,
       canRemoveSample: m.role !== "subbroker",
       clients: clients?.n ?? 0,
-      activeSips: sipStats?.active ?? 0,
-      monthlySip: Number(sipStats?.monthly ?? 0),
+      activeSips: briefing.sips.active + briefing.sips.bounced,
+      monthlySip: briefing.sips.monthly,
       invested: Number(invested?.total ?? 0),
       recent: recent.map((r) => ({ ...r, amount: Number(r.amount) })),
     };
@@ -89,14 +86,12 @@ export const listClients = createServerFn({ method: "GET" })
         .orderBy(investors.name)
         .limit(500);
       const ids = rows.map((r) => r.id);
-      const counts = ids.length
-        ? await tx
-            .select({ investorId: sips.investorId, n: sql<number>`count(*)::int` })
-            .from(sips)
-            .where(and(inArray(sips.investorId, ids), eq(sips.status, "active")))
-            .groupBy(sips.investorId)
-        : [];
-      const sipCount = new Map(counts.map((c) => [c.investorId, c.n]));
+      const sipCount = new Map<string, number>();
+      if (ids.length) {
+        for (const r of (await loadSipBook(tx, todayIst())).rows) {
+          if (r.status === "active" || r.status === "bounced") sipCount.set(r.investorId, (sipCount.get(r.investorId) ?? 0) + 1);
+        }
+      }
       const value = new Map<string, number>();
       if (ids.length) {
         for (const h of await loadHoldings(tx)) value.set(h.investorId, (value.get(h.investorId) ?? 0) + (h.value ?? 0));

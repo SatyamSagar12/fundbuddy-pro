@@ -1,4 +1,5 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { monthlyAmount, SIP_STATUS } from "@/lib/sip-book";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { deleteClient, getClient } from "@/functions/clients";
@@ -36,8 +37,8 @@ function ClientPage() {
   const ret = shownReturn(tot);
   const valued = c.holdings.length > 0;
   const unmatchedInvested = c.unmatched.reduce((s, u) => s + u.netInvested, 0);
-  const active = c.sips.filter((s) => s.status === "active");
-  const monthly = active.reduce((s, x) => s + (x.frequency === "quarterly" ? x.amount / 3 : x.amount), 0);
+  const active = c.sips.filter((s) => s.status === "active" || s.status === "bounced");
+  const monthly = active.reduce((s, x) => s + monthlyAmount(x.amount, x.frequency), 0);
 
   async function remove() {
     if (!confirm(`Delete ${f.name} and all of this client's investments and SIPs? This can't be undone.`)) return;
@@ -71,7 +72,7 @@ function ClientPage() {
           { k: "Current value", v: valued ? money(tot.value) : "—", sub: tot.navDate ? `NAV of ${day(tot.navDate)}` : "" },
           { k: "Gain", v: valued ? money(tot.gain) : "—", sub: valued ? `${ret.label} ${percent(ret.value)}` : "", tone: gainTone(tot.gain) },
           { k: "Invested", v: money(tot.cost + unmatchedInvested), sub: unmatchedInvested ? "Includes schemes not matched yet" : "Cost of units held" },
-          { k: "SIPs", v: money(monthly), sub: `${active.length} active · per month` },
+          { k: "SIPs", v: money(monthly), sub: `${active.length} running · per month` },
         ].map((x) => (
           <Card key={x.k} className="!p-5">
             <p className="eyebrow text-muted">{x.k}</p>
@@ -198,12 +199,17 @@ function ClientPage() {
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{s.scheme ?? "—"}</p>
                   <p className="text-sm text-muted">
-                    {s.frequency === "quarterly" ? "Quarterly" : "Monthly"} · since {day(s.startDate)}
+                    {s.frequency === "quarterly" ? "Quarterly" : s.frequency === "weekly" ? "Weekly" : "Monthly"}
+                    {s.lastPaid ? ` · last paid ${day(s.lastPaid)}` : ` · since ${day(s.startDate)}`}
+                    {s.nextDue && s.status !== "stopped" ? ` · next ${day(s.nextDue)}` : ""}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="font-semibold tabular-nums">{money(s.amount)}</p>
-                  <p className={`text-sm ${s.status === "active" ? "text-good" : "text-muted"}`}>{s.status}</p>
+                  <p className={`text-sm ${SIP_STATUS[s.status]?.tone ?? "text-muted"}`}>
+                    {SIP_STATUS[s.status]?.label ?? s.status}
+                    {s.endingSoon ? " · ending soon" : ""}
+                  </p>
                 </div>
               </li>
             ))}

@@ -11,3 +11,7 @@ PLATFORM_ADMIN_EMAILS=
 # Your UPI ID for plan payments, and the name payers see.
 UPI_ID=
 UPI_PAYEE_NAME=Anqulas
+# Email import. INBOUND_DOMAIN: the domain of the forwarding addresses (Cloudflare Email Routing → folio-mail Worker).
+# INBOX_TOKEN: 32+ random characters, the same value set on the folio-mail Worker.
+INBOUND_DOMAIN=
+INBOX_TOKEN=

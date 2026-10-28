@@ -156,6 +156,61 @@ npx tsx scripts/e2e-nav.ts                                                # brow
 npx tsx scripts/e2e-import.ts                                             # browser test: registrar and CAS imports
 ```
 
+## Phase 3 (built): SIP book, morning briefing, email import
+
+- **SIP book** (`/app/sips`). SIPs are found in the registrars' own transactions, not typed in
+  (`src/lib/sip-book.ts`, `src/server/sip-book.ts`).
+  - Instalments are grouped by client, folio and scheme. A reversal of the same amount within 45 days is a
+    **bounce** (that's how CAMS and KFintech report a returned instalment).
+  - From the rhythm of instalments: weekly, monthly or quarterly, the next date, and a status. **Active**: the
+    last one went through. **Bounced**: the latest was returned. **Missed**: nothing for over one cycle.
+    **Stopped**: nothing for three.
+  - SIPs typed by hand or brought from the old app still show. When registrar data has the same SIP (same
+    client and scheme), it is listed once, with the registrar's status, and stays editable. A typed SIP can have
+    a last-instalment date; it shows as **ending soon** 45 days before.
+  - Filters (All, Active, Bounced, Missed, Ending soon, Stopped), SIP money received per month for the last 12
+    months, and a CSV export.
+- **Morning briefing** (`src/server/briefing.ts`, text in `src/lib/briefing-text.ts`).
+  - On Home, under **Today**: bounced SIPs, redemptions of ₹1 lakh or more in the last 7 days, and birthdays in
+    the next 7 days. Each has **Call** and **WhatsApp** buttons; WhatsApp opens the client's chat with a
+    ready-written message.
+  - Also on Home: SIP instalments in the last 7 days, SIPs due this week, missed and ending-soon SIPs, and the
+    change in value since the previous NAV.
+  - The same, by email, at about 8 am India time, to each owner, staff member and sub-broker (sub-brokers see
+    only their clients). Each person can switch it off in Settings → Practice → Morning summary.
+  - Needs an email service (SES) and `APP_URL`; until then nothing is sent.
+- **Email import** (Settings → Email import, owners and staff; `src/server/inbox.ts`).
+  - Each practice gets a private address, `mb-<12 letters>@<INBOUND_DOMAIN>`. The owner can make a new one if the
+    old one leaks.
+  - The distributor saves the mailback ZIP password once (encrypted with the practice's key), adds the address
+    in Gmail and creates one filter: from `camsonline.com OR kfintech.com OR karvy.com`, forward it. Gmail's
+    confirmation code appears on the page, so no inbox access is needed. The page walks through the steps.
+  - **Only trusted mail is imported:** it must come from the registrars' domains, not fail its DKIM check, and carry
+    a password-protected ZIP that opens with the saved password. So someone who learns the address still can't add
+    transactions. Everything else is listed as "not imported".
+  - Transaction reports import exactly like an upload (same client and scheme matching, never twice). Other
+    reports in the ZIP are skipped and named.
+  - If the password is missing or wrong, the email is kept (encrypted) and imports as soon as the right password is
+    saved. **Received emails** lists each one with what it added; failed ones can be retried.
+  - Ignored emails are deleted after 30 days, the rest after a year.
+- **How email gets in:** Cloudflare Email Routing on the inbound domain → the small Worker in
+  `workers/folio-mail` → `POST /__inbox` (with `INBOX_TOKEN`). The same Worker calls `POST /__inbox/tick` every
+  30 minutes, which runs the NAV import and the 8 am briefing even when nobody opens the app.
+
+Setting it up (once):
+
+1. Buy a separate domain for receiving (any cheap one), add it to Cloudflare (free plan), and switch on
+   **Email Routing** for it.
+2. Deploy the Worker and give it the token:
+   ```sh
+   npx wrangler deploy -c workers/folio-mail/wrangler.jsonc
+   npx wrangler secret put INBOX_TOKEN -c workers/folio-mail/wrangler.jsonc   # 32+ random characters
+   ```
+3. In Email Routing → Routing rules, set the **catch-all** to "Send to a Worker" → `folio-mail`.
+4. On the Pages project, set `INBOUND_DOMAIN` (the domain) and the same `INBOX_TOKEN` as a secret.
+
+Browser test: `npx tsx scripts/e2e-phase3.ts` (needs `INBOUND_DOMAIN` and `INBOX_TOKEN` in `.dev.vars`).
+
 ## Look and feel
 
 Same design language as Anqulas Docs:
@@ -228,8 +283,8 @@ row-level security in a custom migration (`npx drizzle-kit generate --custom --n
   does it on demand.
 - **First admin:** the first sign-up with an email in `PLATFORM_ADMIN_EMAILS` is approved at once, but only while
   no admin account exists. Later sign-ups wait for approval in `/platform` until an email service is set up.
-- **Not on Pages:** scheduled jobs. Hourly housekeeping doesn't run there. The NAV import doesn't need it: it runs in
-  the background after page requests (see phase 2 above).
+- **Not on Pages:** scheduled jobs. The `folio-mail` Worker's 30-minute tick stands in for them (phase 3 above);
+  without it, the NAV import and the briefing still run in the background after page requests.
 
 ## Putting it online (Cloudflare builds it from GitHub)
 

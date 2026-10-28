@@ -102,6 +102,8 @@ export const sipSchema = z.object({
   frequency: z.enum(["monthly", "quarterly"]),
   startDate: date,
   status: z.enum(["active", "paused", "stopped"]),
+  /** Optional: the last instalment date, when the client set one. Shows "ending soon" a month before. */
+  endDate: z.union([z.literal(""), date]).optional().default(""),
 });
 export type SipForm = z.infer<typeof sipSchema>;
 
