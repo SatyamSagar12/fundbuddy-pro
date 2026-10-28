@@ -11,6 +11,15 @@
  *
  *   101762;INF179K01608;-;HDFC Flexi Cap Fund - Growth Plan;1876.543;24-Oct-2026
  *
+ * Since 2026 the file has separate Plan and Option columns, and the name no longer says them:
+ *
+ *   Scheme Code;ISIN Div Payout/ ISIN Growth;ISIN Div Reinvestment;Scheme Name;Plan;Option;Net Asset Value;Date
+ *   101762;INF179K01608;-;HDFC Flexi Cap Fund;Regular Plan;Growth Option;1952.877;27-Oct-2026
+ *
+ * Columns are found from the header line, so both layouts read. With the new one, the plan and option are put
+ * back into the name ("HDFC Flexi Cap Fund - Regular Plan - Growth Option"): a scheme's plans and options stay
+ * told apart, and `planOf` / `optionOf` keep working on the name.
+ *
  * mfapi.in history (https://api.mfapi.in/mf/<scheme code>): { data: [{ date: "24-10-2026", nav: "1876.54300" }, …] },
  * newest first.
  */
@@ -72,14 +81,35 @@ export function optionOf(name: string): AmfiScheme["option"] {
   return null;
 }
 
+type Layout = { name: number; plan: number | null; option: number | null; nav: number; date: number };
+const OLD_LAYOUT: Layout = { name: 3, plan: null, option: null, nav: 4, date: 5 };
+
+function layoutOf(header: string): Layout {
+  const cols = header.split(";").map((c) => c.trim().toLowerCase());
+  const at = (label: string) => {
+    const i = cols.indexOf(label);
+    return i < 0 ? null : i;
+  };
+  const name = at("scheme name");
+  const nav = at("net asset value");
+  const date = at("date");
+  if (name === null || nav === null || date === null) return OLD_LAYOUT;
+  return { name, plan: at("plan"), option: at("option"), nav, date };
+}
+
 export function parseNavAll(text: string): AmfiScheme[] {
   const out: AmfiScheme[] = [];
+  let layout = OLD_LAYOUT;
   let amc: string | null = null;
   let schemeType: string | null = null;
   let category: string | null = null;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
-    if (!line || line.startsWith("Scheme Code")) continue;
+    if (!line) continue;
+    if (line.startsWith("Scheme Code")) {
+      layout = layoutOf(line);
+      continue;
+    }
     if (!line.includes(";")) {
       const head = /^(.+?)\s*Schemes?\s*\((.*)\)\s*$/i.exec(line);
       if (head) {
@@ -92,12 +122,14 @@ export function parseNavAll(text: string): AmfiScheme[] {
       continue;
     }
     const cols = line.split(";");
-    if (cols.length < 6) continue;
+    if (cols.length <= Math.max(layout.name, layout.nav, layout.date)) continue;
     const code = cols[0]!.trim();
-    const name = cols[3]!.replace(/\s+/g, " ").trim();
-    if (!/^\d{1,8}$/.test(code) || !name) continue;
-    const nav = amfiNav(cols[4]!);
-    const navDate = nav ? amfiDate(cols[5]!) : null;
+    const part = (i: number | null) => (i === null ? "" : (cols[i] ?? "").replace(/\s+/g, " ").trim());
+    const base = part(layout.name);
+    if (!/^\d{1,8}$/.test(code) || !base) continue;
+    const name = [base, part(layout.plan), part(layout.option)].filter((x) => x && x !== "-").join(" - ");
+    const nav = amfiNav(cols[layout.nav]!);
+    const navDate = nav ? amfiDate(cols[layout.date]!) : null;
     out.push({
       amfiCode: code,
       isin: isin(cols[1]),
