@@ -32,6 +32,8 @@ import { Route as TwoFactorIndexRouteImport } from './routes/two-factor/index'
 import { Route as TwoFactorSetupRouteImport } from './routes/two-factor/setup'
 import { Route as AppClientsIndexRouteImport } from './routes/app/clients/index'
 import { Route as AppClientsNewRouteImport } from './routes/app/clients/new'
+import { Route as AppFamiliesIndexRouteImport } from './routes/app/families/index'
+import { Route as AppFamiliesNewRouteImport } from './routes/app/families/new'
 import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
 import { Route as AppSettingsBillingRouteImport } from './routes/app/settings/billing'
 import { Route as AppSettingsSecurityRouteImport } from './routes/app/settings/security'
@@ -40,6 +42,8 @@ import { Route as AuthGoogleIndexRouteImport } from './routes/auth/google/index'
 import { Route as AuthGoogleCallbackRouteImport } from './routes/auth/google/callback'
 import { Route as AppClientsClientIdIndexRouteImport } from './routes/app/clients/$clientId/index'
 import { Route as AppClientsClientIdEditRouteImport } from './routes/app/clients/$clientId/edit'
+import { Route as AppFamiliesFamilyIdIndexRouteImport } from './routes/app/families/$familyId/index'
+import { Route as AppFamiliesFamilyIdEditRouteImport } from './routes/app/families/$familyId/edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -156,6 +160,16 @@ const AppClientsNewRoute = AppClientsNewRouteImport.update({
   path: '/clients/new',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppFamiliesIndexRoute = AppFamiliesIndexRouteImport.update({
+  id: '/families/',
+  path: '/families/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppFamiliesNewRoute = AppFamiliesNewRouteImport.update({
+  id: '/families/new',
+  path: '/families/new',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -196,6 +210,17 @@ const AppClientsClientIdEditRoute = AppClientsClientIdEditRouteImport.update({
   path: '/clients/$clientId/edit',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppFamiliesFamilyIdIndexRoute =
+  AppFamiliesFamilyIdIndexRouteImport.update({
+    id: '/families/$familyId/',
+    path: '/families/$familyId/',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
+const AppFamiliesFamilyIdEditRoute = AppFamiliesFamilyIdEditRouteImport.update({
+  id: '/families/$familyId/edit',
+  path: '/families/$familyId/edit',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -220,15 +245,19 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/two-factor/': typeof TwoFactorIndexRoute
   '/app/clients/new': typeof AppClientsNewRoute
+  '/app/families/new': typeof AppFamiliesNewRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/app/clients/': typeof AppClientsIndexRoute
+  '/app/families/': typeof AppFamiliesIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/auth/google/': typeof AuthGoogleIndexRoute
   '/app/clients/$clientId/edit': typeof AppClientsClientIdEditRoute
+  '/app/families/$familyId/edit': typeof AppFamiliesFamilyIdEditRoute
   '/app/clients/$clientId/': typeof AppClientsClientIdIndexRoute
+  '/app/families/$familyId/': typeof AppFamiliesFamilyIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -251,15 +280,19 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/two-factor': typeof TwoFactorIndexRoute
   '/app/clients/new': typeof AppClientsNewRoute
+  '/app/families/new': typeof AppFamiliesNewRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/app/clients': typeof AppClientsIndexRoute
+  '/app/families': typeof AppFamiliesIndexRoute
   '/app/settings': typeof AppSettingsIndexRoute
   '/auth/google': typeof AuthGoogleIndexRoute
   '/app/clients/$clientId/edit': typeof AppClientsClientIdEditRoute
+  '/app/families/$familyId/edit': typeof AppFamiliesFamilyIdEditRoute
   '/app/clients/$clientId': typeof AppClientsClientIdIndexRoute
+  '/app/families/$familyId': typeof AppFamiliesFamilyIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -285,15 +318,19 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/two-factor/': typeof TwoFactorIndexRoute
   '/app/clients/new': typeof AppClientsNewRoute
+  '/app/families/new': typeof AppFamiliesNewRoute
   '/app/settings/billing': typeof AppSettingsBillingRoute
   '/app/settings/security': typeof AppSettingsSecurityRoute
   '/app/settings/team': typeof AppSettingsTeamRoute
   '/auth/google/callback': typeof AuthGoogleCallbackRoute
   '/app/clients/': typeof AppClientsIndexRoute
+  '/app/families/': typeof AppFamiliesIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/auth/google/': typeof AuthGoogleIndexRoute
   '/app/clients/$clientId/edit': typeof AppClientsClientIdEditRoute
+  '/app/families/$familyId/edit': typeof AppFamiliesFamilyIdEditRoute
   '/app/clients/$clientId/': typeof AppClientsClientIdIndexRoute
+  '/app/families/$familyId/': typeof AppFamiliesFamilyIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -320,15 +357,19 @@ export interface FileRouteTypes {
     | '/app/'
     | '/two-factor/'
     | '/app/clients/new'
+    | '/app/families/new'
     | '/app/settings/billing'
     | '/app/settings/security'
     | '/app/settings/team'
     | '/auth/google/callback'
     | '/app/clients/'
+    | '/app/families/'
     | '/app/settings/'
     | '/auth/google/'
     | '/app/clients/$clientId/edit'
+    | '/app/families/$familyId/edit'
     | '/app/clients/$clientId/'
+    | '/app/families/$familyId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -351,15 +392,19 @@ export interface FileRouteTypes {
     | '/app'
     | '/two-factor'
     | '/app/clients/new'
+    | '/app/families/new'
     | '/app/settings/billing'
     | '/app/settings/security'
     | '/app/settings/team'
     | '/auth/google/callback'
     | '/app/clients'
+    | '/app/families'
     | '/app/settings'
     | '/auth/google'
     | '/app/clients/$clientId/edit'
+    | '/app/families/$familyId/edit'
     | '/app/clients/$clientId'
+    | '/app/families/$familyId'
   id:
     | '__root__'
     | '/'
@@ -384,15 +429,19 @@ export interface FileRouteTypes {
     | '/app/'
     | '/two-factor/'
     | '/app/clients/new'
+    | '/app/families/new'
     | '/app/settings/billing'
     | '/app/settings/security'
     | '/app/settings/team'
     | '/auth/google/callback'
     | '/app/clients/'
+    | '/app/families/'
     | '/app/settings/'
     | '/auth/google/'
     | '/app/clients/$clientId/edit'
+    | '/app/families/$familyId/edit'
     | '/app/clients/$clientId/'
+    | '/app/families/$familyId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -577,6 +626,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientsNewRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/families/': {
+      id: '/app/families/'
+      path: '/families'
+      fullPath: '/app/families/'
+      preLoaderRoute: typeof AppFamiliesIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/families/new': {
+      id: '/app/families/new'
+      path: '/families/new'
+      fullPath: '/app/families/new'
+      preLoaderRoute: typeof AppFamiliesNewRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/settings/': {
       id: '/app/settings/'
       path: '/'
@@ -633,6 +696,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppClientsClientIdEditRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/families/$familyId/': {
+      id: '/app/families/$familyId/'
+      path: '/families/$familyId'
+      fullPath: '/app/families/$familyId/'
+      preLoaderRoute: typeof AppFamiliesFamilyIdIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/families/$familyId/edit': {
+      id: '/app/families/$familyId/edit'
+      path: '/families/$familyId/edit'
+      fullPath: '/app/families/$familyId/edit'
+      preLoaderRoute: typeof AppFamiliesFamilyIdEditRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
@@ -662,9 +739,13 @@ interface AppRouteRouteChildren {
   AppSipsRoute: typeof AppSipsRoute
   AppIndexRoute: typeof AppIndexRoute
   AppClientsNewRoute: typeof AppClientsNewRoute
+  AppFamiliesNewRoute: typeof AppFamiliesNewRoute
   AppClientsIndexRoute: typeof AppClientsIndexRoute
+  AppFamiliesIndexRoute: typeof AppFamiliesIndexRoute
   AppClientsClientIdEditRoute: typeof AppClientsClientIdEditRoute
+  AppFamiliesFamilyIdEditRoute: typeof AppFamiliesFamilyIdEditRoute
   AppClientsClientIdIndexRoute: typeof AppClientsClientIdIndexRoute
+  AppFamiliesFamilyIdIndexRoute: typeof AppFamiliesFamilyIdIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -676,9 +757,13 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppSipsRoute: AppSipsRoute,
   AppIndexRoute: AppIndexRoute,
   AppClientsNewRoute: AppClientsNewRoute,
+  AppFamiliesNewRoute: AppFamiliesNewRoute,
   AppClientsIndexRoute: AppClientsIndexRoute,
+  AppFamiliesIndexRoute: AppFamiliesIndexRoute,
   AppClientsClientIdEditRoute: AppClientsClientIdEditRoute,
+  AppFamiliesFamilyIdEditRoute: AppFamiliesFamilyIdEditRoute,
   AppClientsClientIdIndexRoute: AppClientsClientIdIndexRoute,
+  AppFamiliesFamilyIdIndexRoute: AppFamiliesFamilyIdIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

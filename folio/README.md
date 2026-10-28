@@ -102,6 +102,8 @@ Not in phase 1:
 
 - **Daily NAVs.** Every scheme's name, codes, category and latest NAV come from AMFI's daily file
   (`NAVAll.txt`, about 15,000 schemes). Only changed rows are written.
+  - The file's columns are found from its header. Since 2026 AMFI puts Plan and Option in their own columns;
+    Folio adds them back to the scheme name ("HDFC Flexi Cap Fund - Regular Plan - Growth Option").
   - When: in the background after any page request, once the last import is over 6 hours old. Only one app
     instance does it at a time; a failed try is retried after an hour.
   - On demand: `/platform` → **Import NAVs now**, or `POST /__maintenance/nav` with the `MIGRATE_TOKEN`.
@@ -154,6 +156,25 @@ Local NAV data without internet:
 npx tsx scripts/nav-import.ts --file <a NAVAll.txt> --synthetic-history   # made-up history, local database only
 npx tsx scripts/e2e-nav.ts                                                # browser test: NAVs and valuation
 npx tsx scripts/e2e-import.ts                                             # browser test: registrar and CAS imports
+```
+
+## Phase 4 (in progress): families, capital gains, client statements, client portal
+
+- **Families** (Clients → **Families**).
+  - A family groups clients under a head, for example husband, wife and parents.
+  - Start one from the Families list (**New family**) or from a client's page (**Start a family**, with that
+    client as the head and the family named after them).
+  - On a client's page, the Family card can add the client to a family, move them, take them out, or make them
+    the head.
+  - The Families view shows each family's value, invested amount, gain and XIRR (or the plain return in its
+    first year), worked out over all its members' money together, plus its members. CSV export.
+  - A family's page has the same figures, each member's value, and every holding with whose it is.
+  - **Sub-brokers** see only families that hold one of their own clients, and inside them only their own clients
+    (row-level security, migration 0010). They can start families and edit the ones they see, but not delete one.
+    Deleting a family never deletes its clients; they're only ungrouped.
+
+```sh
+npx tsx scripts/e2e-families.ts     # browser test: families (needs NAVs: npx tsx scripts/nav-import.ts)
 ```
 
 ## Look and feel

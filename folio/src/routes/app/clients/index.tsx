@@ -5,6 +5,7 @@ import { listClients } from "@/functions/practice";
 import { assignClient, getTeam } from "@/functions/team";
 import { Card, inputClass, linkButton, PageHeader } from "@/components/ui";
 import { ClientAvatar } from "@/components/client-avatar";
+import { ClientsTabs } from "@/components/clients-tabs";
 import { Plus } from "lucide-react";
 import { money } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
@@ -56,6 +57,7 @@ function ClientsPage() {
           </div>
         }
       />
+      <ClientsTabs />
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -88,7 +90,7 @@ function ClientsPage() {
                   <span className="min-w-0">
                   <p className="truncate font-medium text-text">{c.name}</p>
                   <p className="truncate text-sm text-muted">
-                    {[c.mobile, c.email, c.pan].filter(Boolean).join(" · ") || "No contact details"}
+                    {[c.family, c.mobile, c.email, c.pan].filter(Boolean).join(" · ") || "No contact details"}
                   </p>
                   </span>
                 </Link>

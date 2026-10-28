@@ -307,6 +307,7 @@ export const investors = pgTable(
     index("investors_practice_idx").on(t.practiceId),
     index("investors_tax_id_hash_idx").on(t.practiceId, t.taxIdHash),
     uniqueIndex("investors_legacy_key").on(t.practiceId, t.legacyId),
+    index("investors_family_idx").on(t.familyId),
   ],
 );
 

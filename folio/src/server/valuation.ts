@@ -2,7 +2,7 @@
  * Holdings and their value, read inside a practice scope (row-level security applies).
  * One pass over the practice's matched entries; the same numbers feed Home, Clients and a client's page.
  */
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Tx } from "./db/scope";
 import { instruments, sips, transactions } from "./db/schema";
 import { combine, valueHolding, type Holding } from "@/lib/holdings";
@@ -17,7 +17,14 @@ export type HoldingRow = Holding & {
   estimated: boolean;
 };
 
-export async function loadHoldings(tx: Tx, investorId?: string): Promise<HoldingRow[]> {
+/** One client, several (a family), or everyone the scope can see. */
+export type Who = string | readonly string[] | undefined;
+
+const whose = (who: Who) =>
+  who === undefined ? undefined : typeof who === "string" ? eq(transactions.investorId, who) : inArray(transactions.investorId, [...who]);
+
+export async function loadHoldings(tx: Tx, investorId?: Who): Promise<HoldingRow[]> {
+  if (Array.isArray(investorId) && investorId.length === 0) return [];
   const rows = await tx
     .select({
       investorId: transactions.investorId,
@@ -34,7 +41,7 @@ export async function loadHoldings(tx: Tx, investorId?: string): Promise<Holding
     })
     .from(transactions)
     .innerJoin(instruments, eq(instruments.id, transactions.instrumentId))
-    .where(investorId ? eq(transactions.investorId, investorId) : undefined);
+    .where(whose(investorId));
   const groups = new Map<string, typeof rows>();
   for (const r of rows) {
     const key = `${r.investorId}:${r.instrumentId}`;
@@ -66,7 +73,8 @@ export async function loadHoldings(tx: Tx, investorId?: string): Promise<Holding
 }
 
 /** Entries not matched to a scheme yet, by the scheme name as typed. */
-export async function loadUnmatched(tx: Tx, investorId?: string) {
+export async function loadUnmatched(tx: Tx, investorId?: Who) {
+  if (Array.isArray(investorId) && investorId.length === 0) return [];
   const rows = await tx
     .select({
       scheme: transactions.schemeText,
@@ -74,7 +82,7 @@ export async function loadUnmatched(tx: Tx, investorId?: string) {
       netInvested: sql<string>`coalesce(sum(case when ${transactions.type} in ('redemption', 'switch_out', 'idcw_payout') then -${transactions.amount} when ${transactions.type} = 'idcw_reinvest' then 0 else ${transactions.amount} end), 0)::text`,
     })
     .from(transactions)
-    .where(and(isNull(transactions.instrumentId), investorId ? eq(transactions.investorId, investorId) : undefined))
+    .where(and(isNull(transactions.instrumentId), whose(investorId)))
     .groupBy(transactions.schemeText);
   return rows.map((r) => ({ scheme: r.scheme ?? "(no scheme name)", entries: r.entries, netInvested: Number(r.netInvested) }));
 }
