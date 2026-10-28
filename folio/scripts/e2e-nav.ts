@@ -70,7 +70,7 @@ try {
   await p.getByRole("link", { name: "Ramesh Kumar" }).click();
   await p.getByRole("heading", { name: "Holdings" }).waitFor();
   const rows = await p.locator("table tbody tr").allTextContents();
-  check(rows.some((r) => r.includes("HDFC Flexi Cap Fund - Growth Plan") && r.includes("XIRR")), "client page values the HDFC holding with XIRR");
+  check(rows.some((r) => /HDFC Flexi Cap Fund - (Growth Plan|Regular Plan - Growth Option)/.test(r) && r.includes("XIRR")), "client page values the HDFC holding with XIRR");
   check(rows.some((r) => r.includes("units estimated from NAV")), "estimated units are labelled");
   if (shots) await p.screenshot({ path: `${shots}/client.png`, fullPage: true });
 
