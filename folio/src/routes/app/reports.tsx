@@ -1,8 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Landmark } from "lucide-react";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import { getReportData } from "@/functions/ledger";
-import { Button, Card, PageHeader, SelectField } from "@/components/ui";
+import { Button, Card, linkButtonSecondary, PageHeader, SelectField } from "@/components/ui";
 import { MonthlyFlowChart, SchemeMixChart, SipTrendChart, YearlyTotalsChart } from "@/components/report-charts";
 import { financialYear, monthlyBreakdown, monthlySipCommitment, topSchemes, yearlyBreakdown } from "@/lib/report-math";
 import { money } from "@/lib/format";
@@ -56,7 +57,21 @@ function ReportsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Reports" subtitle={`SIP and one-time flow, financial-year totals and scheme mix for ${scope}.`} />
+      <PageHeader
+        title="Reports"
+        subtitle={`SIP and one-time flow, financial-year totals and scheme mix for ${scope}.`}
+        action={
+          search.client ? (
+            <Link to="/app/capital-gains" search={{ client: search.client }} className={linkButtonSecondary}>
+              <Landmark size={16} /> Capital gains
+            </Link>
+          ) : (
+            <Link to="/app/families" className="link-draw text-[14px] font-medium text-bronze">
+              Capital gains: choose a client above, or open a family
+            </Link>
+          )
+        }
+      />
 
       <Card className="flex flex-wrap items-end gap-4 !p-5">
         <div className="min-w-52 flex-1">

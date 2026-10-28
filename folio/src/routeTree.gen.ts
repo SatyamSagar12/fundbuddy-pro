@@ -21,6 +21,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppCapitalGainsRouteImport } from './routes/app/capital-gains'
 import { Route as AppImportRouteImport } from './routes/app/import'
 import { Route as AppInvestmentsRouteImport } from './routes/app/investments'
 import { Route as AppReportsRouteImport } from './routes/app/reports'
@@ -103,6 +104,11 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppCapitalGainsRoute = AppCapitalGainsRouteImport.update({
+  id: '/capital-gains',
+  path: '/capital-gains',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppImportRoute = AppImportRouteImport.update({
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/settings': typeof AppSettingsRouteRouteWithChildren
+  '/app/capital-gains': typeof AppCapitalGainsRoute
   '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
@@ -270,6 +277,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/app/capital-gains': typeof AppCapitalGainsRoute
   '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
   '/app/settings': typeof AppSettingsRouteRouteWithChildren
+  '/app/capital-gains': typeof AppCapitalGainsRoute
   '/app/import': typeof AppImportRoute
   '/app/investments': typeof AppInvestmentsRoute
   '/app/reports': typeof AppReportsRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify-email'
     | '/app/settings'
+    | '/app/capital-gains'
     | '/app/import'
     | '/app/investments'
     | '/app/reports'
@@ -382,6 +392,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/verify-email'
+    | '/app/capital-gains'
     | '/app/import'
     | '/app/investments'
     | '/app/reports'
@@ -419,6 +430,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/verify-email'
     | '/app/settings'
+    | '/app/capital-gains'
     | '/app/import'
     | '/app/investments'
     | '/app/reports'
@@ -547,6 +559,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/capital-gains': {
+      id: '/app/capital-gains'
+      path: '/capital-gains'
+      fullPath: '/app/capital-gains'
+      preLoaderRoute: typeof AppCapitalGainsRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/import': {
@@ -732,6 +751,7 @@ const AppSettingsRouteRouteWithChildren =
 
 interface AppRouteRouteChildren {
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
+  AppCapitalGainsRoute: typeof AppCapitalGainsRoute
   AppImportRoute: typeof AppImportRoute
   AppInvestmentsRoute: typeof AppInvestmentsRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -750,6 +770,7 @@ interface AppRouteRouteChildren {
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
+  AppCapitalGainsRoute: AppCapitalGainsRoute,
   AppImportRoute: AppImportRoute,
   AppInvestmentsRoute: AppInvestmentsRoute,
   AppReportsRoute: AppReportsRoute,

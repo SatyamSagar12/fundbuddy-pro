@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
-import { Crown, Pencil, Plus, Trash2, UsersRound } from "lucide-react";
+import { Crown, Landmark, Pencil, Plus, Trash2, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { deleteClient, getClient } from "@/functions/clients";
 import { clientFamily, setClientFamily } from "@/functions/families";
@@ -55,6 +55,9 @@ function ClientPage() {
         subtitle={[f.mobile, f.email].filter(Boolean).join(" · ") || undefined}
         action={
           <div className="flex flex-wrap gap-2">
+            <Link to="/app/capital-gains" search={{ client: c.id }} className={linkButtonSecondary}>
+              <Landmark size={16} /> Capital gains
+            </Link>
             <Link to="/app/clients/$clientId/edit" params={{ clientId: c.id }} className={linkButtonSecondary}>
               <Pencil size={16} /> Edit
             </Link>

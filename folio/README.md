@@ -173,8 +173,35 @@ npx tsx scripts/e2e-import.ts                                             # brow
     (row-level security, migration 0010). They can start families and edit the ones they see, but not delete one.
     Deleting a family never deletes its clients; they're only ungrouped.
 
+- **Capital gains** per financial year: **Capital gains** on a client's or a family's page, or on Reports once a
+  client is chosen.
+  - Each sale (redemption or switch out) uses up the oldest units of the same folio and scheme first (FIFO).
+    Purchases, SIP instalments, switches in and reinvested IDCW are the units, at their amount.
+  - Split into short-term and long-term, with the rate for each piece. A summary groups gains by how they're
+    taxed, applies the yearly equity exemption (₹1.25 L; per person in a family), and estimates the tax before
+    surcharge and cess. Gains taxed at slab are shown as income to add, not as tax.
+  - **Rules** live in one versioned table, `src/lib/tax-rules.ts` (checked 28 Oct 2026 against the FY 2026-27 AMC
+    tax reckoners; Budget 2026 changed nothing). A Budget change is a new row there.
+    - Equity funds: long-term after 12 months. From 23 Jul 2024, 12.5% above ₹1.25 L a year, short-term 20%.
+      Before that 10% above ₹1 L and 15%; before 1 Apr 2018, long-term exempt.
+    - Equity units bought by 31 Jan 2018 are **grandfathered**: cost = the higher of the actual cost and the lower
+      of the 31 Jan 2018 value and the sale value. The 31 Jan 2018 NAV comes from the stored history, or is fetched
+      once from mfapi.in (only that week is stored).
+    - Debt funds bought on or after 1 Apr 2023: always at slab. Older units: long-term after 24 months at 12.5%
+      (sold before 23 Jul 2024: after 36 months, 20% with indexation, using the cost inflation index).
+    - Gold, international and fund-of-funds: units bought from 1 Apr 2023 and sold before 1 Apr 2025 at slab;
+      otherwise as older debt. Hybrids with 35–65% equity: as older debt, whenever bought.
+    - How a scheme is taxed comes from its AMFI category (and the name, for index funds, ETFs and funds of funds).
+      When the category doesn't settle it (multi-asset, solution-oriented), the report says "please check".
+  - Named on the report: sales in schemes not matched yet (left out), entries waiting for units, sales of more
+    units than there are purchases for, and a missing 31 Jan 2018 NAV.
+  - **Download CSV**: one row per piece of each sale, with purchase cost, cost used and indexed cost.
+  - Losses are set off only within the same kind here; the tax return allows more. Sales before 1 Apr 2017 aren't
+    covered.
+
 ```sh
 npx tsx scripts/e2e-families.ts     # browser test: families (needs NAVs: npx tsx scripts/nav-import.ts)
+npx tsx scripts/e2e-gains.ts        # browser test: capital gains (also needs internet, for mfapi.in)
 ```
 
 ## Look and feel

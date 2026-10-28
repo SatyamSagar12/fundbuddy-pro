@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { Crown, Pencil, Trash2 } from "lucide-react";
+import { Crown, Landmark, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { deleteFamily, getFamily } from "@/functions/families";
 import { Button, Card, linkButtonSecondary, Notice, PageHeader } from "@/components/ui";
@@ -40,6 +40,9 @@ function FamilyPage() {
         subtitle={`${f.head ? `Head: ${f.head.name} · ` : ""}${f.members.length} member${f.members.length === 1 ? "" : "s"}`}
         action={
           <div className="flex flex-wrap gap-2">
+            <Link to="/app/capital-gains" search={{ family: f.id }} className={linkButtonSecondary}>
+              <Landmark size={16} /> Capital gains
+            </Link>
             <Link to="/app/families/$familyId/edit" params={{ familyId: f.id }} className={linkButtonSecondary}>
               <Pencil size={16} /> Edit
             </Link>
