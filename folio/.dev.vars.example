@@ -3,7 +3,10 @@
 MASTER_KEY=
 # 32 random bytes, base64. Signs session and verification tokens.
 SESSION_SECRET=
-# Amazon SES (Mumbai). Leave empty locally: mail is then printed to the console.
+# Email sending: a Resend API key (preferred), or Amazon SES keys. Leave empty locally: mail is then printed to
+# the console. MAIL_FROM's domain must be verified in Resend.
+RESEND_API_KEY=
+MAIL_FROM=Anqulas Folio <no-reply@anqulas.com>
 SES_ACCESS_KEY_ID=
 SES_SECRET_ACCESS_KEY=
 # Comma-separated emails allowed into /platform.

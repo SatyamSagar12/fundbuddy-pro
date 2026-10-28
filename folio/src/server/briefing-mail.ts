@@ -23,16 +23,15 @@ function istHour(now = new Date()): number {
   return new Date(now.getTime() + 5.5 * 3600 * 1000).getUTCHours();
 }
 
-/** The address used in links when no request is around (cron). */
-function linkBase(): string | null {
+/** The address used in links when no request is around (cron): APP_URL, else the live site. */
+function linkBase(): string {
   const u = appEnv().APP_URL?.trim();
-  return u ? u.replace(/\/+$/, "") : null;
+  return u ? u.replace(/\/+$/, "") : "https://anqulas-folio.pages.dev";
 }
 
 export async function sendBriefingsIfDue(now = new Date()): Promise<{ sent: number } | null> {
   if (istHour(now) < SEND_FROM_HOUR_IST || !emailWorks()) return null;
   const base = linkBase();
-  if (!base) return null;
   const today = todayIst();
   const claimed = await db().execute(sql`
     insert into market_state (key, value, updated_at) values ('briefing_sent', ${today}, now())

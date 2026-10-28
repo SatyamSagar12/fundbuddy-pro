@@ -358,7 +358,8 @@ row-level security in a custom migration (`npx drizzle-kit generate --custom --n
   `folio → anqulas-folio.pages.dev` is in place.
 - **Project:** the Cloudflare Pages project `anqulas-folio` (production branch `main`), holding:
   - the Hyperdrive binding `HYPERDRIVE` (`folio-db`, caching off)
-  - the secrets `MASTER_KEY`, `SESSION_SECRET`, `MIGRATE_TOKEN`, `PLATFORM_ADMIN_EMAILS`
+  - the secrets `MASTER_KEY`, `SESSION_SECRET`, `MIGRATE_TOKEN`, `PLATFORM_ADMIN_EMAILS`, and for email `RESEND_API_KEY`
+    with the variable `MAIL_FROM` (e.g. `Anqulas Folio <no-reply@anqulas.com>`; its domain verified in Resend)
 - **Why Pages:** a Pages site can use a domain whose DNS is elsewhere (Namecheap).
 - **Publish a new version:**
   ```sh

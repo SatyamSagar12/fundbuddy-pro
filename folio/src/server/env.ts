@@ -5,12 +5,15 @@ import { getRequestUrl } from "@tanstack/react-start/server";
 export type AppEnv = {
   /** The site's address for links in emails. When unset, the address the request came in on is used. */
   APP_URL?: string;
-  MAIL_FROM: string;
-  SES_REGION: string;
+  /** Sender of Folio's emails, e.g. "Anqulas Folio <no-reply@anqulas.com>" (domain verified in Resend or SES). */
+  MAIL_FROM?: string;
+  SES_REGION?: string;
   MASTER_KEY: string;
   SESSION_SECRET: string;
   SES_ACCESS_KEY_ID?: string;
   SES_SECRET_ACCESS_KEY?: string;
+  /** Resend (resend.com) API key: sends Folio's emails. Preferred over SES when both are set. */
+  RESEND_API_KEY?: string;
   PLATFORM_ADMIN_EMAILS?: string;
   /** Your UPI ID for plan payments (e.g. anqulas@okhdfcbank) and the name shown in the payer's UPI app. */
   UPI_ID?: string;
