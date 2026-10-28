@@ -12,8 +12,19 @@ const NOISE = new Set([
   "distribution", "cum", "capital", "withdrawal", "gr", "dir", "reg",
 ]);
 
+const wordCache = new Map<string, string[]>();
+
 /** Lower-case words, with "&" read as "and" and anything in brackets (e.g. "(formerly …)") dropped. */
 export function nameWords(name: string): string[] {
+  let words = wordCache.get(name);
+  if (words) return words;
+  if (wordCache.size > 50_000) wordCache.clear();
+  words = splitWords(name);
+  wordCache.set(name, words);
+  return words;
+}
+
+function splitWords(name: string): string[] {
   return name
     .toLowerCase()
     .replace(/\(.*?\)/g, " ")

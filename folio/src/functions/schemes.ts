@@ -21,7 +21,7 @@ export const findSchemes = createServerFn({ method: "GET" })
 export const listUnmatched = createServerFn({ method: "GET" }).handler(async () => {
   const m = await requireMember();
   const names = await withPractice(scopeOf(m), (tx) => unmatchedSchemeNames(tx));
-  const page = names.slice(0, 40);
+  const page = names.slice(0, 20);
   const suggestions = await suggestMany(page.map((n) => n.scheme));
   const status = await navStatus();
   return {

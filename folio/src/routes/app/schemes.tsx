@@ -4,9 +4,10 @@ import { findSchemes, listUnmatched, matchSchemes } from "@/functions/schemes";
 import { Button, Card, inputClass, Notice, PageHeader } from "@/components/ui";
 import { money, navText } from "@/lib/format";
 import { SOMETHING_WRONG } from "@/lib/errors";
+import { expectShape } from "@/components/page-error";
 
 export const Route = createFileRoute("/app/schemes")({
-  loader: () => listUnmatched(),
+  loader: async () => expectShape(await listUnmatched(), "rows"),
   head: () => ({ meta: [{ title: "Match schemes · Anqulas Folio" }] }),
   component: MatchSchemesPage,
 });

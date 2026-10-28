@@ -8,9 +8,10 @@ import { ClientAvatar } from "@/components/client-avatar";
 import { CountUp } from "@/components/motion";
 import { day, money, percent, txnType } from "@/lib/format";
 import { shownReturn } from "@/lib/holdings";
+import { expectShape } from "@/components/page-error";
 
 export const Route = createFileRoute("/app/")({
-  loader: () => getDashboard(),
+  loader: async () => expectShape(await getDashboard(), "briefing"),
   head: () => ({ meta: [{ title: "Home · Anqulas Folio" }] }),
   component: HomePage,
 });
