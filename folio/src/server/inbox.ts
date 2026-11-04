@@ -30,13 +30,25 @@ import { deleteExpiredPortalRows } from "./portal";
 import { readTables, TableError, ZipError } from "@/lib/imports/tables";
 import { isZip, readZip } from "@/lib/imports/zip";
 import { readFeed } from "@/lib/imports/feed";
+import { readContacts, type ContactRow } from "@/lib/imports/contacts";
+import { applyClientDetails } from "./client-details";
 import type { ImportSource, ImportTxn } from "@/lib/imports/normalise";
 
 export const MAX_EMAIL_BYTES = 20 * 1024 * 1024;
 const REGISTRAR_DOMAINS = /(^|\.)(camsonline\.com|kfintech\.com|karvy\.com|kfintech\.in|mfcentral\.com)$/i;
 const GOOGLE_FORWARDING = /^forwarding-noreply@google\.com$/i;
 
-export type InboxFile = { name: string; status: "imported" | "skipped" | "failed"; added?: number; alreadyIn?: number; newClients?: number; note?: string };
+export type InboxFile = {
+  name: string;
+  status: "imported" | "skipped" | "failed";
+  added?: number;
+  alreadyIn?: number;
+  newClients?: number;
+  /** Client details from the file: clients whose empty mobile/email/address was filled, and clients added. */
+  detailsUpdated?: number;
+  detailsAdded?: number;
+  note?: string;
+};
 export type InboxDetail = {
   files?: InboxFile[];
   added?: number;
@@ -243,8 +255,10 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
       const tables = await readWithAny(f.name, bytes, passwords);
       const bySource = new Map<ImportSource, ImportTxn[]>();
       const notReports: string[] = [];
+      const contacts: ContactRow[] = [];
       for (const t of tables) {
         if (!t.rows.length) continue;
+        contacts.push(...readContacts(t.rows));
         const feed = readFeed(t.rows);
         if (feed.missing.length) {
           notReports.push(t.name);
@@ -252,11 +266,17 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
         }
         bySource.set(feed.source, [...(bySource.get(feed.source) ?? []), ...feed.txns]);
       }
-      if (!bySource.size) {
-        out.push({ name: f.name, status: "skipped", note: `Not a transaction report${notReports.length ? ` (${notReports.join(", ")})` : ""}. Only transaction reports are imported for now.` });
+      if (!bySource.size && !contacts.length) {
+        out.push({ name: f.name, status: "skipped", note: `Not a transaction or client details report${notReports.length ? ` (${notReports.join(", ")})` : ""}.` });
         continue;
       }
       if (!member) throw new Error("This practice has no active owner.");
+      if (!bySource.size) {
+        // A client details report (investor / folio master): mobiles, emails, addresses, new clients.
+        const d = await applyClientDetails(member, pc, contacts, `email: ${f.name}`);
+        out.push({ name: f.name, status: "imported", added: 0, detailsUpdated: d.updated, detailsAdded: d.created, note: d.skippedOverLimit ? `${d.skippedOverLimit} clients not added: over your plan's client limit.` : undefined });
+        continue;
+      }
       for (const [source, txns] of bySource) {
         if (!txns.length) continue;
         const res = await applyImport(member, pc, { source, txns, fileName: `Email: ${f.name}` });
@@ -267,6 +287,10 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
         }
         added += res.added;
         out.push({ name: f.name, status: "imported", added: res.added, alreadyIn: res.plan.alreadyIn, newClients: res.plan.newClients });
+      }
+      if (contacts.length && out.at(-1)?.name === f.name && out.at(-1)?.status === "imported") {
+        const d = await applyClientDetails(member, pc, contacts, `email: ${f.name}`);
+        Object.assign(out.at(-1)!, { detailsUpdated: d.updated, detailsAdded: d.created });
       }
     } catch (e) {
       if (e instanceof ZipError && (e.code === "wrong_password" || e.code === "password_needed")) {

@@ -9,6 +9,7 @@ import { withPractice } from "@/server/db/scope";
 import { investors } from "@/server/db/schema";
 import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 import { applyImport, planImport } from "@/server/registrar-import";
+import { applyClientDetails } from "@/server/client-details";
 import { importFundVault, OLD_SAMPLE_IDS, parseCsv } from "@/server/import-fundvault";
 import { billingFor } from "@/server/billing";
 import { audit } from "@/server/security";
@@ -33,11 +34,22 @@ const txn = z.object({
   arn: z.string().max(20).nullable(),
   description: z.string().max(300),
 });
+const contact = z.object({
+  folio: z.string().max(40).nullable(),
+  pan: z.string().regex(/^[A-Z]{5}\d{4}[A-Z]$/).nullable(),
+  name: z.string().max(150).nullable(),
+  amc: z.string().max(120).nullable(),
+  email: z.string().max(200).nullable(),
+  mobile: z.string().max(20).nullable(),
+  address: z.string().max(400).nullable(),
+  dob: date.nullable(),
+});
 const input = z.object({
   source: z.enum(["cams", "kfintech", "cas"]),
   fileName: z.string().max(200),
   investorId: z.uuid().optional(),
   txns: z.array(txn).min(1).max(20000),
+  contacts: z.array(contact).max(50000).optional(),
 });
 
 export const previewImport = createServerFn({ method: "POST" })
@@ -51,7 +63,18 @@ export const runImport = createServerFn({ method: "POST" })
   .validator((data: unknown) => input.parse(data))
   .handler(async ({ data }) => {
     const m = await requireMember(["owner", "staff"]);
-    return applyImport(m, await cryptoFor(m.practiceId), data);
+    const pc = await cryptoFor(m.practiceId);
+    const result = await applyImport(m, pc, data);
+    const details = data.contacts?.length && !result.plan.error ? await applyClientDetails(m, pc, data.contacts, data.fileName) : null;
+    return { ...result, details };
+  });
+
+/** A report with client details only (investor / folio master): fills empty mobiles, emails, addresses, adds new clients. */
+export const importClientDetails = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ fileName: z.string().max(200), contacts: z.array(contact).min(1).max(50000) }).parse(data))
+  .handler(async ({ data }) => {
+    const m = await requireMember(["owner", "staff"]);
+    return applyClientDetails(m, await cryptoFor(m.practiceId), data.contacts, data.fileName);
   });
 
 /** Clients to pick from when a CAS statement's PAN isn't on any client yet. */

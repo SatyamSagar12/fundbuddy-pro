@@ -191,6 +191,10 @@ npx tsx scripts/e2e-import.ts                                             # brow
   - **Only trusted mail is imported:** it must come from the registrars' domains, not fail its DKIM check, and carry
     a password-protected ZIP that opens with the saved password. So someone who learns the address still can't add
     transactions. Everything else is listed as "not imported".
+  - **Client details:** any report with mobile, email, address or date-of-birth columns (the registrars' investor
+    / folio master reports) fills those fields where a client's are empty (never overwriting what was typed), and
+    adds clients Folio doesn't have yet (with a PAN). The same works for uploads on the Import page
+    (`src/lib/imports/contacts.ts`, `src/server/client-details.ts`).
   - Transaction reports import exactly like an upload (same client and scheme matching, never twice). Other
     reports in the ZIP are skipped and named.
   - If the password is missing or wrong, the email is kept (encrypted) and imports as soon as the right password is

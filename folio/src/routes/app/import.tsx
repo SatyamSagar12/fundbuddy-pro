@@ -2,12 +2,13 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { Check, FileSpreadsheet, FileText, History, Lock, X } from "lucide-react";
 import { useState } from "react";
 import { clsx } from "clsx";
-import { importClients, importOldApp, previewImport, runImport } from "@/functions/imports";
+import { importClientDetails, importClients, importOldApp, previewImport, runImport } from "@/functions/imports";
 import { Button, Card, inputClass, Notice, order, PageHeader, SelectField } from "@/components/ui";
 import { day, money, txnType, units as unitsText } from "@/lib/format";
 import { readTables, TableError } from "@/lib/imports/tables";
 import { ZipError } from "@/lib/imports/zip";
 import { readFeed } from "@/lib/imports/feed";
+import { readContacts, type ContactRow } from "@/lib/imports/contacts";
 import { casTransactions, parseCas, type CasResult } from "@/lib/imports/cas";
 import type { ImportSource, ImportTxn, Skipped } from "@/lib/imports/normalise";
 import { SOMETHING_WRONG } from "@/lib/errors";
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/app/import")({
 });
 
 type Plan = Awaited<ReturnType<typeof previewImport>>;
-type Loaded = { source: ImportSource; fileName: string; txns: ImportTxn[]; skipped: Skipped[]; cas?: CasResult };
+type Loaded = { source: ImportSource; fileName: string; txns: ImportTxn[]; skipped: Skipped[]; cas?: CasResult; contacts?: ContactRow[] };
 
 function ImportPage() {
   const { me } = Route.useRouteContext();
@@ -110,8 +111,10 @@ function RegistrarImport() {
       const skipped: Skipped[] = [];
       let source: ImportSource = "cams";
       const missing: string[] = [];
+      const contacts: ContactRow[] = [];
       for (const t of tables) {
         if (!t.rows.length) continue;
+        contacts.push(...readContacts(t.rows));
         const r = readFeed(t.rows);
         if (r.missing.length) {
           missing.push(`${t.name}: no column for ${r.missing.join(", ")}`);
@@ -121,6 +124,10 @@ function RegistrarImport() {
         txns.push(...r.txns);
         skipped.push(...r.skipped);
       }
+      if (!txns.length && contacts.length) {
+        setLoaded({ source, fileName: file.name, txns: [], skipped: [], contacts });
+        return;
+      }
       if (!txns.length) {
         setError(
           missing.length
@@ -129,7 +136,7 @@ function RegistrarImport() {
         );
         return;
       }
-      setLoaded({ source, fileName: file.name, txns, skipped });
+      setLoaded({ source, fileName: file.name, txns, skipped, contacts });
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -163,7 +170,7 @@ function RegistrarImport() {
         </div>
         {error && <Notice tone="error">{error}</Notice>}
       </Card>
-      {loaded && <Preview loaded={loaded} />}
+      {loaded && (loaded.txns.length ? <Preview loaded={loaded} /> : <DetailsOnly loaded={loaded} />)}
     </div>
   );
 }
@@ -290,7 +297,8 @@ function Preview({ loaded, investorId }: { loaded: Loaded; investorId?: string |
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const payload = { source: loaded.source, fileName: loaded.fileName, txns: loaded.txns, investorId };
+  const payload = { source: loaded.source, fileName: loaded.fileName, txns: loaded.txns, investorId, contacts: loaded.contacts?.length ? loaded.contacts : undefined };
+  const [details, setDetails] = useState<{ updated: number; created: number; skippedOverLimit: number } | null>(null);
 
   async function check() {
     setBusy(true);
@@ -310,6 +318,7 @@ function Preview({ loaded, investorId }: { loaded: Loaded; investorId?: string |
       const r = await runImport({ data: payload });
       setPlan(r.plan);
       setDone(r.added);
+      setDetails(r.details);
     } catch {
       setError(SOMETHING_WRONG);
     } finally {
@@ -398,7 +407,8 @@ function Preview({ loaded, investorId }: { loaded: Loaded; investorId?: string |
           </ul>
           {done !== null ? (
             <Notice tone="good">
-              Imported {done} transactions.{" "}
+              Imported {done} transactions.
+              {details && (details.updated || details.created) ? ` Client details: ${details.updated} updated, ${details.created} added.` : ""}{" "}
               <Link to="/app/clients" className="link-draw font-medium">
                 See your clients
               </Link>
@@ -682,5 +692,52 @@ function Compare({ label, before, after, same }: { label: string; before: string
         <span className={same ? "text-good" : "text-bad"}>{same ? "same" : "differs"}</span>
       </dd>
     </div>
+  );
+}
+
+/** A client details report (investor / folio master): no transactions, just mobiles, emails and addresses. */
+function DetailsOnly({ loaded }: { loaded: Loaded }) {
+  const contacts = loaded.contacts ?? [];
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ updated: number; created: number; skippedOverLimit: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const withMobile = contacts.filter((c) => c.mobile).length;
+  const withEmail = contacts.filter((c) => c.email).length;
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      setResult(await importClientDetails({ data: { fileName: loaded.fileName, contacts } }));
+    } catch {
+      setError(SOMETHING_WRONG);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card className="space-y-4">
+      <div>
+        <p className="eyebrow text-bronze">Client details</p>
+        <h2 className="mt-1 font-serif text-[1.75rem] leading-tight">{contacts.length} clients' details read</h2>
+        <p className="text-[13px] text-muted">
+          {loaded.fileName} · {withMobile} with a mobile · {withEmail} with an email
+        </p>
+      </div>
+      <p className="text-[15px] text-muted">
+        Empty mobiles, emails, addresses and birthdays are filled in; anything already typed stays as it is. Clients not in
+        Folio yet are added (they need a PAN in the file).
+      </p>
+      {error && <Notice tone="error">{error}</Notice>}
+      {result ? (
+        <Notice tone="good">
+          {result.updated} clients updated, {result.created} new clients added.
+          {result.skippedOverLimit ? ` ${result.skippedOverLimit} not added: over your plan's client limit.` : ""}
+        </Notice>
+      ) : (
+        <Button onClick={() => void save()} disabled={busy}>
+          {busy ? "Saving…" : "Update clients"}
+        </Button>
+      )}
+    </Card>
   );
 }

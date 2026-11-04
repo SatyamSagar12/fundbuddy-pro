@@ -33,14 +33,16 @@ export type Skipped = { reason: string; text: string };
 
 const MONTHS: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
 
+let minYear = 1980;
 const iso = (y: number, m: number, d: number) =>
-  y >= 1980 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : null;
+  y >= minYear && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : null;
 
 /**
  * "24-Oct-2026", "24 Oct 2026", "24/10/2026", "24-10-2026", "2026-10-24", "20261024", "10/24/2026 00:00:00".
  * Day-first unless the first number can't be a day... month (Indian files are day-first).
  */
-export function parseDate(text: string): string | null {
+export function parseDate(text: string, earliestYear = 1980): string | null {
+  minYear = earliestYear;
   const t = text.trim().replace(/\s+\d{1,2}:\d{2}(:\d{2})?(\s*[AP]M)?$/i, "");
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
   if (m) return iso(+m[1]!, +m[2]!, +m[3]!);

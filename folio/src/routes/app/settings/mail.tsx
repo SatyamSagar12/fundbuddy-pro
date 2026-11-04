@@ -253,7 +253,15 @@ function MailSettings() {
                       <li key={i}>
                         {f.name}:{" "}
                         {f.status === "imported"
-                          ? `${f.added ?? 0} new transactions${f.alreadyIn ? `, ${f.alreadyIn} already in` : ""}${f.newClients ? `, ${f.newClients} new clients` : ""}`
+                          ? [
+                              f.added || !f.detailsUpdated ? `${f.added ?? 0} new transactions` : null,
+                              f.alreadyIn ? `${f.alreadyIn} already in` : null,
+                              f.newClients ? `${f.newClients} new clients` : null,
+                              f.detailsUpdated ? `${f.detailsUpdated} clients' contact details filled` : null,
+                              f.detailsAdded ? `${f.detailsAdded} clients added from details` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")
                           : f.note}
                       </li>
                     ))}
