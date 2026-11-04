@@ -64,6 +64,13 @@
       "when": 1793181532501,
       "tag": "0011_client_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793821286860,
+      "tag": "0012_kfintech_password",
+      "breakpoints": true
     }
   ]
 }

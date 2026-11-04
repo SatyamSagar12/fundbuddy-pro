@@ -5,7 +5,7 @@ import { Card } from "@/components/ui";
 
 export const Route = createFileRoute("/get-app")({
   loader: () => getAppPage(),
-  head: () => ({ meta: [{ title: "Get the FundVault app · Anqulas Folio" }] }),
+  head: () => ({ meta: [{ title: "Get the FundVault app · Anqulas Folio" }, { name: "robots", content: "index, follow" }] }),
   component: GetAppPage,
 });
 

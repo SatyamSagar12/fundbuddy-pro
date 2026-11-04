@@ -1,0 +1,15 @@
+# Only the public pages of Anqulas Folio are for search engines; everything with client data is private.
+User-agent: *
+Allow: /$
+Allow: /get-app
+Allow: /login
+Allow: /signup
+Disallow: /app
+Disallow: /portal
+Disallow: /c/
+Disallow: /platform
+Disallow: /downloads/
+Disallow: /__inbox
+Disallow: /__maintenance
+
+Sitemap: https://folio.anqulas.com/sitemap.xml

@@ -38,15 +38,16 @@ function MailSettings() {
     }
   }
 
-  async function savePassword(e: React.FormEvent<HTMLFormElement>) {
+  async function savePassword(e: React.FormEvent<HTMLFormElement>, registrar: "cams" | "kfintech") {
     e.preventDefault();
     const form = e.currentTarget;
     setBusy(true);
     setMsg(null);
     try {
-      const res = await saveMailbackPassword({ data: { password: String(new FormData(form).get("password") ?? "") } });
+      const res = await saveMailbackPassword({ data: { registrar, password: String(new FormData(form).get("password") ?? "") } });
       form.reset();
-      setMsg({ tone: "good", text: res.imported ? `Saved. ${res.imported} waiting email${res.imported > 1 ? "s" : ""} imported.` : "Password saved." });
+      const who = registrar === "cams" ? "CAMS" : "KFintech";
+      setMsg({ tone: "good", text: res.imported ? `${who} password saved. ${res.imported} waiting email${res.imported > 1 ? "s" : ""} imported.` : `${who} password saved.` });
       await router.invalidate();
     } catch (err) {
       setMsg({ tone: "error", text: firstIssue(err) ?? SOMETHING_WRONG });
@@ -123,19 +124,34 @@ function MailSettings() {
       </Card>
 
       <Card>
-        <h2 className="text-lg font-semibold">Mailback ZIP password</h2>
+        <h2 className="text-lg font-semibold">Mailback ZIP passwords</h2>
         <p className="mt-1 mb-4 text-[15px] text-muted">
-          The password you give CAMS and KFintech when you ask for reports. Use the same one for both. It is stored
-          encrypted, and only used to open these files.
+          The passwords you gave CAMS and KFintech for your mailback reports. If both are the same, fill only CAMS.
+          They are stored encrypted, and only used to open these files.
         </p>
-        <form onSubmit={savePassword} className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[14rem] flex-1">
-            <Field label={d.hasPassword ? "Change the password" : "Password"} name="password" type="password" autoComplete="off" placeholder={d.hasPassword ? "Saved ••••••••" : ""} />
-          </div>
-          <Button type="submit" disabled={busy}>
-            {busy ? "Saving…" : "Save"}
-          </Button>
-        </form>
+        <div className="space-y-4">
+          {(
+            [
+              ["cams", "CAMS password"],
+              ["kfintech", "KFintech password"],
+            ] as const
+          ).map(([registrar, label]) => (
+            <form key={registrar} onSubmit={(e) => void savePassword(e, registrar)} className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[14rem] flex-1">
+                <Field
+                  label={d.hasPassword[registrar] ? `${label} (saved; type to change)` : label}
+                  name="password"
+                  type="password"
+                  autoComplete="off"
+                  placeholder={d.hasPassword[registrar] ? "Saved ••••••••" : registrar === "kfintech" ? "Only if different from CAMS" : ""}
+                />
+              </div>
+              <Button type="submit" disabled={busy}>
+                {busy ? "Saving…" : "Save"}
+              </Button>
+            </form>
+          ))}
+        </div>
       </Card>
 
       {d.address && (
@@ -191,7 +207,7 @@ function MailSettings() {
             </li>
             <li>
               <b>4. Ask for daily reports.</b> On the CAMS and KFintech distributor websites, schedule the daily
-              transaction mailback (CAMS: WBR2; KFintech: MFSD201) to come to this Gmail, with the password you saved
+              transaction mailback (CAMS: WBR2; KFintech: MFSD201) to come to this Gmail, with the passwords you saved
               above. From then on, each day's transactions arrive and import by themselves.
             </li>
           </ol>

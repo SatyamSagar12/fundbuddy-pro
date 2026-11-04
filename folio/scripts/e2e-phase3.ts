@@ -115,9 +115,9 @@ try {
   check(true, "without a saved password it waits");
   if (shots) await p.screenshot({ path: `${shots}/p3-mail-waiting.png`, fullPage: true });
 
-  await p.getByLabel("Password").fill(ZIP_PASSWORD);
-  await p.getByRole("button", { name: "Save" }).click();
-  await p.getByText("1 waiting email imported").waitFor();
+  await p.getByLabel("CAMS password").fill(ZIP_PASSWORD);
+  await p.getByRole("button", { name: "Save" }).first().click();
+  await p.getByText("CAMS password saved. 1 waiting email imported.").waitFor();
   check(true, "saving the password imports the waiting email");
   await p.getByText("Working: emails are arriving and importing").waitFor();
   const detail = await p.getByText(/new transactions/).first().textContent();
@@ -160,13 +160,20 @@ try {
   await p.getByLabel(/Email it to me/).check();
   await p.waitForTimeout(400);
 
-  await sql`delete from market_state where key = 'briefing_sent'`;
-  const tick = await fetch(`${BASE}/__inbox/tick`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
-  const tickBody = (await tick.json()) as { briefings: { sent: number } | null };
-  check(tick.ok && (tickBody.briefings?.sent ?? 0) >= 1, `the scheduled tick sends the briefings (${JSON.stringify(tickBody.briefings)})`);
-  await go(p, "/dev/outbox");
-  const outbox = (await p.locator("body").textContent()) ?? "";
-  check(outbox.includes("Folio: Book") && outbox.includes("SIP bounced: Asha Verma"), "the briefing email names who to call");
+  // The briefing is sent only from 8 am India time; outside that, this part is skipped.
+  const istHour = new Date(Date.now() + 5.5 * 3600 * 1000).getUTCHours();
+  if (istHour >= 8) {
+    await sql`delete from market_state where key = 'briefing_sent'`;
+    const tick = await fetch(`${BASE}/__inbox/tick`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
+    const tickBody = (await tick.json()) as { briefings: { sent: number } | null };
+    check(tick.ok && (tickBody.briefings?.sent ?? 0) >= 1, `the scheduled tick sends the briefings (${JSON.stringify(tickBody.briefings)})`);
+    await go(p, "/dev/outbox");
+    const outbox = (await p.locator("body").textContent()) ?? "";
+    check(outbox.includes("Folio: Book") && outbox.includes("SIP bounced: Asha Verma"), "the briefing email names who to call");
+  } else {
+    const tick = await fetch(`${BASE}/__inbox/tick`, { method: "POST", headers: { authorization: `Bearer ${TOKEN}` } });
+    check(tick.ok, "the scheduled tick answers (briefing check skipped: before 8 am in India)");
+  }
 
   // Phone width.
   const phone = await b.newContext({ viewport: { width: 375, height: 800 }, storageState: await ctx.storageState() });

@@ -6,7 +6,7 @@ import { db } from "@/server/db/client";
 import { withPractice } from "@/server/db/scope";
 import { inboxMessages, memberships, practices, transactions, users } from "@/server/db/schema";
 import { newWrappedDataKey, practiceCrypto, randomBytes, toB64url } from "@/server/crypto";
-import { ensureInboxCode, inboxEndpoint, receiveEmail, retryWaiting } from "@/server/inbox";
+import { ensureInboxCode, inboxEndpoint, passwordsFor, receiveEmail, retryWaiting } from "@/server/inbox";
 import { withTestDb } from "./helpers";
 
 const MASTER = toB64url(randomBytes(32));
@@ -134,6 +134,28 @@ describe("email import", () => {
     expect(last.status).toBe("imported");
     expect(last.detail).toMatchObject({ added: 0 });
     expect(await withTestDb(txnCount)).toBe(5);
+  });
+
+  it("tries the sender's registrar's password first", () => {
+    const saved = { cams: "c-pass", kfintech: "k-pass" };
+    expect(passwordsFor("donotreply@camsonline.com", saved)).toEqual(["c-pass", "k-pass"]);
+    expect(passwordsFor("mailback@kfintech.com", saved)).toEqual(["k-pass", "c-pass"]);
+    expect(passwordsFor("x@karvy.com", { cams: "same", kfintech: "same" })).toEqual(["same"]);
+    expect(passwordsFor("x@karvy.com", { cams: null, kfintech: null })).toEqual([]);
+  });
+
+  it("opens a KFintech mailback with the KFintech password when CAMS's differs", async () => {
+    await withTestDb(async () => {
+      const [p] = await db().select().from(practices).where(eq(practices.id, P));
+      const pc = await practiceCrypto(MASTER, P, p!.dataKeyWrapped);
+      await db()
+        .update(practices)
+        .set({ mailbackPasswordEnc: await pc.encrypt("mailback_password", P, "cams-only"), kfintechPasswordEnc: await pc.encrypt("kfintech_password", P, "folio123") })
+        .where(eq(practices.id, P));
+    });
+    const kfin = mime({ from: "KFintech <mailback@kfintech.com>", subject: "MFSD201", files: [{ name: "kfin.zip", bytes: fixture("cams-feed-aes256.zip") }] });
+    await withTestDb(() => receiveEmail(address, kfin));
+    expect((await withTestDb(messages)).at(-1)).toMatchObject({ status: "imported" });
   });
 
   it("only trusts password-protected files", async () => {

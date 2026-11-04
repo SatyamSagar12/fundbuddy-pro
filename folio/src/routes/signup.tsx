@@ -7,7 +7,7 @@ import { firstIssue, SOMETHING_WRONG } from "@/lib/errors";
 
 export const Route = createFileRoute("/signup")({
   loader: () => getAuthOptions(),
-  head: () => ({ meta: [{ title: "Start your free trial · Anqulas Folio" }] }),
+  head: () => ({ meta: [{ title: "Start your free trial · Anqulas Folio" }, { name: "robots", content: "index, follow" }] }),
   component: SignupPage,
 });
 

@@ -175,9 +175,41 @@ async function ownerMember(practiceId: string): Promise<Member | null> {
   return o ? { userId: o.userId, practiceId, role: "owner", name: "Automatic import", email: "" } : null;
 }
 
-export async function mailbackPassword(practiceId: string, pc: PracticeCrypto): Promise<string | null> {
-  const [p] = await db().select({ enc: practices.mailbackPasswordEnc }).from(practices).where(eq(practices.id, practiceId));
-  return p?.enc ? pc.decrypt("mailback_password", practiceId, p.enc) : null;
+export type RegistrarPasswords = { cams: string | null; kfintech: string | null };
+
+export async function mailbackPasswords(practiceId: string, pc: PracticeCrypto): Promise<RegistrarPasswords> {
+  const [p] = await db()
+    .select({ cams: practices.mailbackPasswordEnc, kfin: practices.kfintechPasswordEnc })
+    .from(practices)
+    .where(eq(practices.id, practiceId));
+  return {
+    cams: p?.cams ? await pc.decrypt("mailback_password", practiceId, p.cams) : null,
+    kfintech: p?.kfin ? await pc.decrypt("kfintech_password", practiceId, p.kfin) : null,
+  };
+}
+
+/** The saved passwords to try for an email, the sender's registrar's first. */
+export function passwordsFor(from: string, saved: RegistrarPasswords): string[] {
+  const kfin = /(kfintech|karvy)/i.test(from.split("@")[1] ?? "");
+  const order = kfin ? [saved.kfintech, saved.cams] : [saved.cams, saved.kfintech];
+  return [...new Set(order.filter((x): x is string => !!x))];
+}
+
+/** Reads a ZIP with the first password that opens it. */
+async function readWithAny(name: string, bytes: Uint8Array, passwords: string[]) {
+  let last: unknown = new ZipError("This ZIP is password-protected. Enter its password.", "password_needed");
+  for (const pw of passwords) {
+    try {
+      return await readTables(name, bytes, pw);
+    } catch (e) {
+      if (e instanceof ZipError && (e.code === "wrong_password" || e.code === "password_needed")) {
+        last = e;
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw last;
 }
 
 /** Opens and imports one stored email. Returns its new status. */
@@ -189,7 +221,7 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
     .where(and(eq(inboxMessages.id, messageId), eq(inboxMessages.practiceId, practiceId)));
   if (!msg?.payloadEnc) return msg?.status ?? "missing";
   const files = JSON.parse(await pc.decrypt("inbox_payload", messageId, msg.payloadEnc)) as StoredFile[];
-  const password = await mailbackPassword(practiceId, pc);
+  const passwords = passwordsFor(msg.fromAddress, await mailbackPasswords(practiceId, pc));
   const member = await ownerMember(practiceId);
 
   const out: InboxFile[] = [];
@@ -202,13 +234,13 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
       out.push({ name: f.name, status: "skipped", note: "Not password-protected, so not trusted. Upload it on the Import page if you expected it." });
       continue;
     }
-    if (!password) {
+    if (!passwords.length) {
       needsPassword = true;
       out.push({ name: f.name, status: "failed", note: "Save the mailback ZIP password in Settings to open it." });
       continue;
     }
     try {
-      const tables = await readTables(f.name, bytes, password);
+      const tables = await readWithAny(f.name, bytes, passwords);
       const bySource = new Map<ImportSource, ImportTxn[]>();
       const notReports: string[] = [];
       for (const t of tables) {
@@ -239,7 +271,7 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
     } catch (e) {
       if (e instanceof ZipError && (e.code === "wrong_password" || e.code === "password_needed")) {
         needsPassword = true;
-        out.push({ name: f.name, status: "failed", note: "The saved password didn't open this ZIP. Check it in Settings." });
+        out.push({ name: f.name, status: "failed", note: `The saved ${/(kfintech|karvy)/i.test(msg.fromAddress) ? "KFintech" : "CAMS"} password didn't open this ZIP. Check it in Settings.` });
       } else {
         failed = true;
         out.push({ name: f.name, status: "failed", note: e instanceof ZipError || e instanceof TableError ? e.message : "Couldn't read this file." });

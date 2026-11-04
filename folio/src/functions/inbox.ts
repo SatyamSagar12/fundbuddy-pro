@@ -14,7 +14,10 @@ export const getInbox = createServerFn({ method: "GET" }).handler(async () => {
   const m = await requireMember(["owner", "staff"]);
   const domain = inboundDomain();
   const code = domain ? await ensureInboxCode(m.practiceId) : null;
-  const [p] = await db().select({ enc: practices.mailbackPasswordEnc }).from(practices).where(eq(practices.id, m.practiceId));
+  const [p] = await db()
+    .select({ cams: practices.mailbackPasswordEnc, kfin: practices.kfintechPasswordEnc })
+    .from(practices)
+    .where(eq(practices.id, m.practiceId));
   const messages = await withPractice(scopeOf(m), (tx) =>
     tx
       .select({
@@ -36,7 +39,7 @@ export const getInbox = createServerFn({ method: "GET" }).handler(async () => {
   const mailbackAfter = confirm && rows.some((r) => r.kind === "mailback" && r.receivedAt > confirm.receivedAt);
   return {
     address: code && domain ? `${code}@${domain}` : null,
-    hasPassword: Boolean(p?.enc),
+    hasPassword: { cams: Boolean(p?.cams), kfintech: Boolean(p?.kfin) },
     canRenew: m.role === "owner",
     /** Forwarding confirmed: a registrar email has arrived since Gmail's confirmation (or at all). */
     forwarding: Boolean(mailbackAfter) || rows.some((r) => r.kind === "mailback"),
@@ -47,15 +50,23 @@ export const getInbox = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const saveMailbackPassword = createServerFn({ method: "POST" })
-  .validator((input: unknown) => z.object({ password: z.string().trim().min(1, "Enter the password.").max(100) }).parse(input))
+  .validator((input: unknown) =>
+    z
+      .object({ registrar: z.enum(["cams", "kfintech"]), password: z.string().trim().min(1, "Enter the password.").max(100) })
+      .parse(input),
+  )
   .handler(async ({ data }) => {
     const m = await requireMember(["owner", "staff"]);
     const pc = await cryptoFor(m.practiceId);
     await db()
       .update(practices)
-      .set({ mailbackPasswordEnc: await pc.encrypt("mailback_password", m.practiceId, data.password) })
+      .set(
+        data.registrar === "cams"
+          ? { mailbackPasswordEnc: await pc.encrypt("mailback_password", m.practiceId, data.password) }
+          : { kfintechPasswordEnc: await pc.encrypt("kfintech_password", m.practiceId, data.password) },
+      )
       .where(eq(practices.id, m.practiceId));
-    await audit(m.practiceId, m.userId, "inbox.password_saved");
+    await audit(m.practiceId, m.userId, "inbox.password_saved", { meta: { registrar: data.registrar } });
     const imported = await retryWaiting(m.practiceId);
     return { ok: true as const, imported };
   });

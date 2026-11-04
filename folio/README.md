@@ -184,7 +184,8 @@ npx tsx scripts/e2e-import.ts                                             # brow
 - **Email import** (Settings → Email import, owners and staff; `src/server/inbox.ts`).
   - Each practice gets a private address, `mb-<12 letters>@<INBOUND_DOMAIN>`. The owner can make a new one if the
     old one leaks.
-  - The distributor saves the mailback ZIP password once (encrypted with the practice's key), adds the address
+  - The distributor saves the CAMS and (if different) KFintech ZIP passwords once (encrypted with the practice's key; each
+    email tries its own registrar's password first), adds the address
     in Gmail and creates one filter: from `camsonline.com OR kfintech.com OR karvy.com`, forward it. Gmail's
     confirmation code appears on the page, so no inbox access is needed. The page walks through the steps.
   - **Only trusted mail is imported:** it must come from the registrars' domains, not fail its DKIM check, and carry

@@ -56,8 +56,10 @@ export const practices = pgTable("practices", {
   requireTotp: boolean("require_totp").notNull().default(false),
   /** The private part of the practice's forwarding address (<code>@<inbound domain>), made on first use. */
   inboxCode: text("inbox_code").unique(),
-  /** Password of the registrars' mailback ZIPs, encrypted with the practice's key. */
+  /** Password of CAMS's mailback ZIPs (also tried for KFintech), encrypted with the practice's key. */
   mailbackPasswordEnc: text("mailback_password_enc"),
+  /** Password of KFintech's mailback ZIPs, when it differs from CAMS's; encrypted with the practice's key. */
+  kfintechPasswordEnc: text("kfintech_password_enc"),
   /** Client portal: clients sign in at /c/<portal_code> with a code sent to their email. Off until the owner turns it on. */
   portalEnabled: boolean("portal_enabled").notNull().default(false),
   portalCode: text("portal_code"),

@@ -17,7 +17,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
 export const Route = createFileRoute("/login")({
   validateSearch: z.object({ error: z.string().optional() }),
   loader: () => getAuthOptions(),
-  head: () => ({ meta: [{ title: "Sign in · Anqulas Folio" }] }),
+  head: () => ({ meta: [{ title: "Sign in · Anqulas Folio" }, { name: "robots", content: "index, follow" }] }),
   component: LoginPage,
 });
 
