@@ -199,6 +199,11 @@ npx tsx scripts/e2e-import.ts                                             # brow
   `workers/folio-mail` → `POST /__inbox` (with `INBOX_TOKEN`). The same Worker calls `POST /__inbox/tick` every
   30 minutes, which runs the NAV import and the 8 am briefing even when nobody opens the app.
 
+**As set up:** the forwarding addresses are `mb-…@folio-in.anqulas.com` (anqulas.com's DNS is on Cloudflare; Google
+mail on anqulas.com itself is untouched). The `folio-mail` Worker is deployed; the zone's catch-all email rule sends
+to it; the Pages project has `INBOUND_DOMAIN` and `INBOX_TOKEN`. Another product (e.g. Anqulas Docs) can use its own
+sub-address such as `docs-in.anqulas.com` with its own Worker.
+
 Setting it up (once):
 
 1. Buy a separate domain for receiving (any cheap one), add it to Cloudflare (free plan), and switch on
