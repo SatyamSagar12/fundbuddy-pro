@@ -1,7 +1,7 @@
 {
   "id": "/app",
   "name": "Anqulas Folio",
-  "short_name": "Folio",
+  "short_name": "FundVault",
   "description": "Back office for mutual fund distributors: clients, investments, SIPs and reports.",
   "start_url": "/app",
   "scope": "/",

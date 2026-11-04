@@ -76,6 +76,13 @@ function SettingsPage() {
       </Card>
       <BriefingCard setting={p.briefing} />
       <Card>
+        <h2 className="text-lg font-semibold">Phone app</h2>
+        <p className="mt-1 text-[15px] text-muted">FundVault for Android (download) and iPhone (add to Home Screen).</p>
+        <a href="/get-app" className="link-draw mt-3 inline-block font-medium text-bronze">
+          Get the FundVault app
+        </a>
+      </Card>
+      <Card>
         <h2 className="text-lg font-semibold">Appearance</h2>
         <p className="mt-1 mb-4 text-[15px] text-muted">Light, dark, or the same as this device. Kept on this device only.</p>
         <ThemeToggle tone="paper" />

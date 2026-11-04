@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as GetAppRouteImport } from './routes/get-app'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as LockedRouteImport } from './routes/locked'
 import { Route as LoginRouteImport } from './routes/login'
@@ -63,6 +64,11 @@ const AppRouteRoute = AppRouteRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GetAppRoute = GetAppRouteImport.update({
+  id: '/get-app',
+  path: '/get-app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteRoute = InviteRouteImport.update({
@@ -256,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/get-app': typeof GetAppRoute
   '/invite': typeof InviteRoute
   '/locked': typeof LockedRoute
   '/login': typeof LoginRoute
@@ -297,6 +304,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/get-app': typeof GetAppRoute
   '/invite': typeof InviteRoute
   '/locked': typeof LockedRoute
   '/login': typeof LoginRoute
@@ -339,6 +347,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/get-app': typeof GetAppRoute
   '/invite': typeof InviteRoute
   '/locked': typeof LockedRoute
   '/login': typeof LoginRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/forgot-password'
+    | '/get-app'
     | '/invite'
     | '/locked'
     | '/login'
@@ -424,6 +434,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/forgot-password'
+    | '/get-app'
     | '/invite'
     | '/locked'
     | '/login'
@@ -465,6 +476,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/forgot-password'
+    | '/get-app'
     | '/invite'
     | '/locked'
     | '/login'
@@ -508,6 +520,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  GetAppRoute: typeof GetAppRoute
   InviteRoute: typeof InviteRoute
   LockedRoute: typeof LockedRoute
   LoginRoute: typeof LoginRoute
@@ -546,6 +559,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/get-app': {
+      id: '/get-app'
+      path: '/get-app'
+      fullPath: '/get-app'
+      preLoaderRoute: typeof GetAppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invite': {
@@ -877,6 +897,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  GetAppRoute: GetAppRoute,
   InviteRoute: InviteRoute,
   LockedRoute: LockedRoute,
   LoginRoute: LoginRoute,

@@ -4,6 +4,7 @@ import { getMe, logout } from "@/functions/auth";
 import { BrandMark } from "@/components/brand";
 import { MotionSettle, NavigationProgress } from "@/components/motion";
 import { ThemeToggle } from "@/components/theme";
+import { GetAppPopup } from "@/components/get-app";
 
 export const Route = createFileRoute("/app")({
   beforeLoad: async ({ location }) => {
@@ -124,6 +125,7 @@ function AppLayout() {
           </div>
         </main>
       </div>
+      <GetAppPopup />
 
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
         {NAV.filter((n) => n.mobile).map((n) => (

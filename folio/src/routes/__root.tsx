@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#eeeae2", media: "(prefers-color-scheme: light)" },
       { name: "theme-color", content: "#151c18", media: "(prefers-color-scheme: dark)" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-title", content: "Folio" },
+      { name: "apple-mobile-web-app-title", content: "FundVault" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

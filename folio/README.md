@@ -304,6 +304,26 @@ npx tsx scripts/e2e-statement.ts    # browser test: PDF statement (download, pho
 npx tsx scripts/e2e-portal.ts       # browser test: client portal (codes come from /dev/outbox)
 ```
 
+## FundVault phone app
+
+- **Android:** `apps/android` is a small app (a Trusted Web Activity) that opens `https://folio.anqulas.com/app`
+  full-screen in Chrome, with its own name and icon, and falls back to a built-in web view without Chrome. Website
+  updates reach it at once; a new APK is only needed to change its name, icon or address.
+  - Downloaded from `/downloads/FundVault.apk` (the popup on phones, Settings → Phone app, and `/get-app`).
+  - `public/.well-known/assetlinks.json` proves the app and the site belong together (no browser bar). It holds the
+    signing key's SHA-256 fingerprint; a different key needs a new fingerprint there.
+  - **Signing key:** kept outside the repository (`fundvault-release.jks` and its password, given to the owner).
+    Every update must be signed with the same key, or phones refuse to update.
+  - Build (Android SDK at `ANDROID_HOME`):
+    ```sh
+    cd apps/android
+    FUNDVAULT_KEYSTORE=/path/fundvault-release.jks FUNDVAULT_KEYSTORE_PASSWORD=… gradle assembleRelease
+    cp app/build/outputs/apk/release/app-release.apk ../../public/downloads/FundVault.apk
+    ```
+    Raise `versionCode` in `app/build.gradle` for each new APK.
+- **iPhone:** Apple allows no app downloads outside the App Store, so the popup and `/get-app` show how to add
+  FundVault to the Home Screen from Safari (it opens full-screen, named FundVault).
+
 ## Look and feel
 
 Same design language as Anqulas Docs:

@@ -1,0 +1,51 @@
+// FundVault for Android: opens Anqulas Folio full-screen in Chrome (a Trusted Web Activity), so every website
+// update reaches the app at once. Falls back to a built-in web view on phones without Chrome.
+//
+// Release signing comes from the environment, never from this repository:
+//   FUNDVAULT_KEYSTORE (path), FUNDVAULT_KEYSTORE_PASSWORD, FUNDVAULT_KEY_ALIAS, FUNDVAULT_KEY_PASSWORD
+plugins { id "com.android.application" }
+
+def appHost = "folio.anqulas.com"
+
+android {
+    namespace "com.anqulas.fundvault"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.anqulas.fundvault"
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+        manifestPlaceholders = [hostName: appHost, launchUrl: "https://" + appHost + "/app"]
+        resValue "string", "app_name", "FundVault"
+        resValue "string", "asset_statements",
+            "[{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://" + appHost + "\" } }]"
+    }
+
+    signingConfigs {
+        release {
+            def ks = System.getenv("FUNDVAULT_KEYSTORE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("FUNDVAULT_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("FUNDVAULT_KEY_ALIAS") ?: "fundvault"
+                keyPassword System.getenv("FUNDVAULT_KEY_PASSWORD") ?: System.getenv("FUNDVAULT_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (System.getenv("FUNDVAULT_KEYSTORE")) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+}
