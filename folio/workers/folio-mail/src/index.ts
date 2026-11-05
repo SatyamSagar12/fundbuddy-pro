@@ -30,6 +30,7 @@ export default {
       },
       body: raw,
     });
+    console.log(`email to ${message.to} (${message.rawSize} bytes): Folio answered ${res.status} ${(await res.text()).slice(0, 120)}`);
     if (res.status === 404) message.setReject("No such Anqulas Folio address.");
     else if (res.status === 413) message.setReject("Email too large for Anqulas Folio.");
     // A server error throws, so the sending server keeps the email and tries again later.
