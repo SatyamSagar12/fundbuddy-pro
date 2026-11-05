@@ -36,13 +36,14 @@ export const getInbox = createServerFn({ method: "GET" }).handler(async () => {
   const rows = messages.map((r) => ({ ...r, receivedAt: r.receivedAt.toISOString(), detail: r.detail as InboxDetail }));
   // Gmail's confirmation is worth showing until the first registrar email has come through after it.
   const confirm = rows.find((r) => r.kind === "forward_confirm");
-  const mailbackAfter = confirm && rows.some((r) => r.kind === "mailback" && r.receivedAt > confirm.receivedAt);
+  // Any email arriving after Gmail's confirmation means forwarding was confirmed and works.
+  const mailbackAfter = confirm && rows.some((r) => r.kind !== "forward_confirm" && r.receivedAt > confirm.receivedAt);
   return {
     address: code && domain ? `${code}@${domain}` : null,
     hasPassword: { cams: Boolean(p?.cams), kfintech: Boolean(p?.kfin) },
     canRenew: m.role === "owner",
     /** Forwarding confirmed: a registrar email has arrived since Gmail's confirmation (or at all). */
-    forwarding: Boolean(mailbackAfter) || rows.some((r) => r.kind === "mailback"),
+    forwarding: Boolean(mailbackAfter) || rows.some((r) => r.kind !== "forward_confirm"),
     confirmation: confirm && !mailbackAfter ? { code: confirm.detail.code ?? null, link: confirm.detail.link ?? null, requester: confirm.detail.requester ?? null, at: confirm.receivedAt } : null,
     messages: rows.filter((r) => r.kind !== "forward_confirm"),
     working: rows.some((r) => r.kind === "mailback" && r.status === "imported"),

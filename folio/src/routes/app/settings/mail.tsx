@@ -173,13 +173,29 @@ function MailSettings() {
                 <div className="mt-2 rounded-xl border border-good/30 bg-good-soft p-3 font-medium text-good">✓ Done: emails are being forwarded.</div>
               ) : d.confirmation ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-good/30 bg-good-soft p-3">
-                  <span className="text-[13px] text-muted">Gmail's code{d.confirmation.requester ? ` for ${d.confirmation.requester}` : ""}</span>
-                  <code className="text-xl font-semibold tracking-widest select-all">{d.confirmation.code ?? "—"}</code>
-                  {d.confirmation.code && <CopyButton text={d.confirmation.code} label="Copy the code" />}
+                  <span className="text-[13px] text-muted">
+                    Gmail's confirmation{d.confirmation.requester ? ` for ${d.confirmation.requester}` : ""}
+                  </span>
+                  {d.confirmation.code && (
+                    <>
+                      <code className="text-xl font-semibold tracking-widest select-all">{d.confirmation.code}</code>
+                      <CopyButton text={d.confirmation.code} label="Copy the code" />
+                    </>
+                  )}
                   {d.confirmation.link && (
-                    <a href={d.confirmation.link} target="_blank" rel="noreferrer" className={textLink}>
-                      or confirm with Gmail's link
+                    <a
+                      href={d.confirmation.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={d.confirmation.code ? textLink : "inline-flex h-9 items-center rounded-full bg-text px-4 text-[14px] font-medium text-paper"}
+                    >
+                      {d.confirmation.code ? "or confirm with Gmail's link" : "Confirm with Gmail"}
                     </a>
+                  )}
+                  {!d.confirmation.code && (
+                    <span className="w-full text-[13px] text-muted">
+                      Gmail sent a link instead of a code. Open it once; when Gmail says the confirmation worked, you're done.
+                    </span>
                   )}
                 </div>
               ) : (
