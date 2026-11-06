@@ -47,7 +47,22 @@ function MailSettings() {
       const res = await saveMailbackPassword({ data: { registrar, password: String(new FormData(form).get("password") ?? "") } });
       form.reset();
       const who = registrar === "cams" ? "CAMS" : "KFintech";
-      setMsg({ tone: "good", text: res.imported ? `${who} password saved. ${res.imported} waiting email${res.imported > 1 ? "s" : ""} imported.` : `${who} password saved.` });
+      // One email per request, so each stays within the server's per-request time limit.
+      let imported = 0;
+      let unfinished = 0;
+      for (const [i, id] of res.waiting.entries()) {
+        setMsg({ tone: "good", text: `${who} password saved. Trying waiting emails again: ${i + 1} of ${res.waiting.length}…` });
+        try {
+          const r = await retryInboxMessage({ data: { id } });
+          if (r.ok && r.status === "imported") imported++;
+        } catch {
+          unfinished++;
+        }
+      }
+      const parts = [`${who} password saved.`];
+      if (imported) parts.push(`${imported} waiting email${imported > 1 ? "s" : ""} imported.`);
+      if (unfinished) parts.push(`${unfinished} couldn't be finished this time; use 🔄 to try ${unfinished > 1 ? "them" : "it"} again.`);
+      setMsg({ tone: unfinished && !imported ? "error" : "good", text: parts.join(" ") });
       await router.invalidate();
     } catch (err) {
       setMsg({ tone: "error", text: firstIssue(err) ?? SOMETHING_WRONG });

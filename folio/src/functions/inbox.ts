@@ -7,7 +7,7 @@ import { withPractice } from "@/server/db/scope";
 import { inboxMessages, memberships, practices } from "@/server/db/schema";
 import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 import { audit } from "@/server/security";
-import { ensureInboxCode, inboundDomain, issueGmailToken, processMessage, retryWaiting, type InboxDetail } from "@/server/inbox";
+import { ensureInboxCode, inboundDomain, issueGmailToken, processMessage, waitingIds, type InboxDetail } from "@/server/inbox";
 import { gmailHelperScript } from "@/lib/gmail-helper-script";
 import { appUrl } from "@/server/env";
 import { emailWorks } from "@/server/mailer";
@@ -72,8 +72,8 @@ export const saveMailbackPassword = createServerFn({ method: "POST" })
       )
       .where(eq(practices.id, m.practiceId));
     await audit(m.practiceId, m.userId, "inbox.password_saved", { meta: { registrar: data.registrar } });
-    const imported = await retryWaiting(m.practiceId);
-    return { ok: true as const, imported };
+    // The page retries these one per request: all at once runs past Cloudflare's CPU limit and nothing is saved.
+    return { ok: true as const, waiting: await waitingIds(m.practiceId) };
   });
 
 export const renewInboxAddress = createServerFn({ method: "POST" }).handler(async () => {

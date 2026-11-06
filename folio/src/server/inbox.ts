@@ -385,14 +385,21 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
   return status;
 }
 
-/** After the password is saved: retry every email that was waiting for it. */
-export async function retryWaiting(practiceId: string): Promise<number> {
-  const waiting = await db()
+/** Emails that can be tried again (waiting for a password, or failed), oldest first. */
+export async function waitingIds(practiceId: string): Promise<string[]> {
+  const rows = await db()
     .select({ id: inboxMessages.id })
     .from(inboxMessages)
     .where(and(eq(inboxMessages.practiceId, practiceId), inArray(inboxMessages.status, ["needs_password", "failed"])))
     .orderBy(asc(inboxMessages.receivedAt))
     .limit(50);
+  return rows.map((r) => r.id);
+}
+
+/** Retries every waiting email in one go. The app retries them one request at a time instead (see the mail
+ *  settings page), so a single request stays within Cloudflare's per-request CPU limit. */
+export async function retryWaiting(practiceId: string): Promise<number> {
+  const waiting = (await waitingIds(practiceId)).map((id) => ({ id }));
   const pc = await cryptoOf(practiceId);
   let imported = 0;
   for (const w of waiting) if ((await processMessage(practiceId, w.id, pc)) === "imported") imported++;
