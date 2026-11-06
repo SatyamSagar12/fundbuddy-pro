@@ -13,7 +13,8 @@ mkdirSync(out, { recursive: true });
 cpSync("dist/client", out, { recursive: true });
 cpSync("dist/server", `${out}/_worker.js`, {
   recursive: true,
-  filter: (src) => !src.endsWith(".map") && !src.endsWith("wrangler.json"),
+  // Never ship local settings (.dev.vars) or build caches with the app.
+  filter: (src) => !src.endsWith(".map") && !src.endsWith("wrangler.json") && !/[\\/](\.dev\.vars|\.vite)([\\/]|$)/.test(src),
 });
 // Every static file and folder (assets, icons, manifest, service worker) is served directly by Pages.
 const exclude = readdirSync("dist/client").map((name) => (statSync(`dist/client/${name}`).isDirectory() ? `/${name}/*` : `/${name}`));
