@@ -71,6 +71,13 @@
       "when": 1793821286860,
       "tag": "0012_kfintech_password",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793952421340,
+      "tag": "0013_gmail_helper",
+      "breakpoints": true
     }
   ]
 }

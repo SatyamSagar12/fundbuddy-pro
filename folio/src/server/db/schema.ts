@@ -60,6 +60,8 @@ export const practices = pgTable("practices", {
   mailbackPasswordEnc: text("mailback_password_enc"),
   /** Password of KFintech's mailback ZIPs, when it differs from CAMS's; encrypted with the practice's key. */
   kfintechPasswordEnc: text("kfintech_password_enc"),
+  /** SHA-256 of the key the practice's Gmail helper script uses to send mailbacks (the key itself is never stored). */
+  gmailTokenHash: text("gmail_token_hash").unique(),
   /** Client portal: clients sign in at /c/<portal_code> with a code sent to their email. Off until the owner turns it on. */
   portalEnabled: boolean("portal_enabled").notNull().default(false),
   portalCode: text("portal_code"),

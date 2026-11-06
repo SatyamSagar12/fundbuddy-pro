@@ -200,6 +200,12 @@ npx tsx scripts/e2e-import.ts                                             # brow
   - If the password is missing or wrong, the email is kept (encrypted) and imports as soon as the right password is
     saved. **Received emails** lists each one with what it added; failed ones can be retried.
   - Ignored emails are deleted after 30 days, the rest after a year.
+- **Gmail helper (recommended):** Settings → Email import → "Make my Gmail script" gives an Apps Script
+  (`src/lib/gmail-helper-script.ts`) to paste into script.google.com in the Gmail that receives mailbacks. It runs
+  every 15 minutes under the user's own Google account and posts new CAMS/KFintech emails' attachments to
+  `POST /__inbox/gmail` with a per-practice key (only its hash is stored; making a new script replaces it). The first
+  run also sends the last 90 days. Each Gmail message is imported once. Use it where Gmail forwarding doesn't reach
+  Folio (e.g. a second forwarding filter beside OFA's).
 - **How email gets in:** Cloudflare Email Routing on the inbound domain → the small Worker in
   `workers/folio-mail` → `POST /__inbox` (with `INBOX_TOKEN`). The same Worker calls `POST /__inbox/tick` every
   30 minutes, which runs the NAV import and the 8 am briefing even when nobody opens the app.

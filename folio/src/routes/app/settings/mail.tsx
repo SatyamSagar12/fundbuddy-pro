@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Check, Copy, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { deleteInboxMessage, getInbox, renewInboxAddress, retryInboxMessage, saveMailbackPassword } from "@/functions/inbox";
+import { createGmailHelper, deleteInboxMessage, getInbox, renewInboxAddress, retryInboxMessage, saveMailbackPassword } from "@/functions/inbox";
 import { Button, Card, Field, Notice, textLink } from "@/components/ui";
 import { firstIssue, SOMETHING_WRONG } from "@/lib/errors";
 
@@ -154,9 +154,11 @@ function MailSettings() {
         </div>
       </Card>
 
+      <GmailHelperCard has={d.hasGmailHelper} count={d.viaHelper} />
+
       {d.address && (
         <Card>
-          <h2 className="text-lg font-semibold">Set up Gmail (once, about 2 minutes)</h2>
+          <h2 className="text-lg font-semibold">Or: Gmail forwarding</h2>
           <p className="mt-1 text-[15px] text-muted">Do this on a computer, in the Gmail account where CAMS and KFintech send your reports.</p>
           <ol className="mt-4 space-y-5 text-[15px]">
             <li>
@@ -289,5 +291,73 @@ function MailSettings() {
         )}
       </Card>
     </div>
+  );
+}
+
+/** The Gmail helper: the most reliable way, for Gmail accounts where forwarding doesn't reach Folio. */
+function GmailHelperCard({ has, count }: { has: boolean; count: number }) {
+  const [script, setScript] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  async function make() {
+    if (has && !confirm("Make a new script? The one already running in Gmail will stop working until you replace it.")) return;
+    setBusy(true);
+    try {
+      setScript((await createGmailHelper()).script);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold">Gmail helper (recommended)</h2>
+      <p className="mt-1 text-[15px] text-muted">
+        A small script that runs inside the Gmail where CAMS and KFintech send reports, under your own Google account. Every
+        15 minutes it sends new mailbacks to Folio, and the first time it also brings the last 90 days. OFA and your other
+        filters keep working. This works even when Gmail forwarding doesn't.
+      </p>
+      {has && !script && (
+        <p className="mt-3 text-[15px] font-medium text-good">
+          ✓ Set up{count ? `: ${count} email${count > 1 ? "s" : ""} received through it` : ". Waiting for its first run"}.
+        </p>
+      )}
+      {!script ? (
+        <Button className="mt-4" onClick={() => void make()} disabled={busy}>
+          {busy ? "Making…" : has ? "Make a new script" : "Make my Gmail script"}
+        </Button>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => {
+                void navigator.clipboard.writeText(script).then(() => setCopied(true));
+              }}
+            >
+              {copied ? "Copied" : "Copy the script"}
+            </Button>
+            <span className="text-[13px] text-muted">It holds your practice's private key: don't share it.</span>
+          </div>
+          <textarea readOnly value={script} rows={6} className="w-full rounded-xl border border-line bg-field p-3 font-mono text-[12px]" aria-label="Gmail helper script" />
+          <ol className="list-decimal space-y-1.5 pl-5 text-[15px]">
+            <li>
+              On a computer, sign in to the Gmail that gets CAMS/KFintech reports, then open{" "}
+              <a href="https://script.google.com/home/projects/create" target="_blank" rel="noreferrer" className={textLink}>
+                script.google.com → New project
+              </a>
+              .
+            </li>
+            <li>Delete what's in the editor, paste the script, and click the Save icon.</li>
+            <li>
+              In the bar above the code, choose <b>setup</b> and click <b>Run</b>.
+            </li>
+            <li>
+              Google asks for permission: <b>Review permissions</b> → choose the account → <b>Advanced</b> → <b>Go to … (unsafe)</b> →{" "}
+              <b>Allow</b>. ("Unsafe" only means Google hasn't reviewed a script you made yourself.)
+            </li>
+            <li>Done. Within a few minutes, mailbacks appear below under Received emails.</li>
+          </ol>
+        </div>
+      )}
+    </Card>
   );
 }

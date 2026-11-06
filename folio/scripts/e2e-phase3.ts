@@ -124,6 +124,12 @@ try {
   check(detail?.includes("8 new transactions") && detail.includes("1 new clients"), `the import is listed (${detail})`);
   if (shots) await p.screenshot({ path: `${shots}/p3-mail-done.png`, fullPage: true });
 
+  // The Gmail helper script.
+  await p.getByRole("button", { name: "Make my Gmail script" }).click();
+  const script = await p.getByLabel("Gmail helper script").inputValue();
+  check(script.includes("const FOLIO_KEY = \"fgh_") && script.includes("/__inbox/gmail"), "the Gmail helper script is made with the practice's key");
+  if (shots) await p.screenshot({ path: `${shots}/p3-gmail-helper.png`, fullPage: true });
+
   // A second copy of the same email adds nothing.
   await deliver(address, mime(address, "CAMS <donotreply@camsonline.com>", "WBR2 Transaction Report", "Attached.", zip));
   await go(p, "/app/settings/mail");

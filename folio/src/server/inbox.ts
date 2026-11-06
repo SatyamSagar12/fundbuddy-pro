@@ -53,6 +53,8 @@ export type InboxDetail = {
   files?: InboxFile[];
   added?: number;
   note?: string;
+  /** Gmail's id of the message, when it came from the Gmail helper (so it is never imported twice). */
+  gmailId?: string;
   /** Gmail forwarding confirmation. */
   code?: string | null;
   link?: string | null;
@@ -153,16 +155,76 @@ export async function receiveEmail(to: string, raw: ArrayBuffer | Uint8Array): P
     await record(practice.id, from, subject, "mailback", "ignored", { note: "No report file attached." });
     return { status: 200, message: "Ignored: no attachment" };
   }
-  const pc = await cryptoOf(practice.id);
+  const result = await storeAndProcess(practice.id, from, subject, files, {});
+  return { status: 200, message: `Mailback ${result}` };
+}
+
+/** Keeps a mailback's files (encrypted) and imports them. Returns the new status. */
+async function storeAndProcess(practiceId: string, from: string, subject: string, files: StoredFile[], detail: InboxDetail): Promise<string> {
+  const pc = await cryptoOf(practiceId);
   const [row] = await db()
     .insert(inboxMessages)
-    .values({ practiceId: practice.id, fromAddress: from, subject, kind: "mailback", status: "waiting", detail: {} })
+    .values({ practiceId, fromAddress: from, subject, kind: "mailback", status: "waiting", detail })
     .returning({ id: inboxMessages.id });
   await db()
     .update(inboxMessages)
     .set({ payloadEnc: await pc.encrypt("inbox_payload", row!.id, JSON.stringify(files)) })
     .where(eq(inboxMessages.id, row!.id));
-  const result = await processMessage(practice.id, row!.id, pc);
+  return processMessage(practiceId, row!.id, pc);
+}
+
+// ── Gmail helper ──────────────────────────────────────────────────────────────
+// A small Apps Script in the distributor's own Gmail sends CAMS/KFintech mailbacks here directly, for mailboxes
+// where Gmail forwarding doesn't reach us (a second forwarding filter, or strict sender policies on forwarded mail).
+
+async function sha256Hex(text: string): Promise<string> {
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+  return [...d].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** A new key for the practice's Gmail helper; the previous one stops working. Only its hash is stored. */
+export async function issueGmailToken(practiceId: string): Promise<string> {
+  const token = `fgh_${toB64url(randomBytes(32))}`;
+  await db().update(practices).set({ gmailTokenHash: await sha256Hex(token) }).where(eq(practices.id, practiceId));
+  return token;
+}
+
+export type GmailUpload = {
+  messageId: string;
+  from: string;
+  subject: string;
+  attachments: { name: string; data: string }[];
+};
+
+/** One email from the Gmail helper. Gmail has already checked the sender; the ZIP password still has to open it. */
+export async function receiveFromGmail(token: string, body: GmailUpload): Promise<{ status: number; message: string }> {
+  if (!/^fgh_[A-Za-z0-9_-]{40,}$/.test(token)) return { status: 401, message: "Unknown key" };
+  const [practice] = await db().select({ id: practices.id }).from(practices).where(eq(practices.gmailTokenHash, await sha256Hex(token)));
+  if (!practice) return { status: 401, message: "Unknown key" };
+  const from = lower(/<([^>]+)>/.exec(body.from)?.[1] ?? body.from);
+  const subject = String(body.subject ?? "").slice(0, 300);
+  const gmailId = String(body.messageId ?? "").slice(0, 64);
+  if (!gmailId) return { status: 400, message: "No message id" };
+  const domain = from.split("@")[1] ?? "";
+  if (!REGISTRAR_DOMAINS.test(domain)) return { status: 200, message: "Ignored: not from a registrar" };
+  const [dup] = await db()
+    .select({ id: inboxMessages.id })
+    .from(inboxMessages)
+    .where(and(eq(inboxMessages.practiceId, practice.id), sql`${inboxMessages.detail}->>'gmailId' = ${gmailId}`))
+    .limit(1);
+  if (dup) return { status: 200, message: "Already received" };
+  const files: StoredFile[] = [];
+  for (const a of body.attachments ?? []) {
+    const name = String(a.name ?? "attachment").slice(0, 200);
+    const bytes = fromB64(String(a.data ?? ""));
+    if (!bytes.length || (!/\.(zip|dbf|csv|txt|xls|xlsx)$/i.test(name) && !isZip(bytes))) continue;
+    files.push({ name, data: toB64url(bytes) });
+  }
+  if (!files.length) {
+    await record(practice.id, from, subject, "mailback", "ignored", { note: "No report file attached.", gmailId } as InboxDetail);
+    return { status: 200, message: "Ignored: no attachment" };
+  }
+  const result = await storeAndProcess(practice.id, from, subject, files, { gmailId } as InboxDetail);
   return { status: 200, message: `Mailback ${result}` };
 }
 
@@ -308,7 +370,7 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
     .update(inboxMessages)
     .set({
       status,
-      detail: { files: out, added } satisfies InboxDetail,
+      detail: { ...(msg.detail as InboxDetail), files: out, added } satisfies InboxDetail,
       // Keep the files only while they can still be retried.
       payloadEnc: status === "needs_password" || status === "failed" ? msg.payloadEnc : null,
     })
@@ -354,6 +416,7 @@ function sameText(a: string, b: string): boolean {
  */
 export async function inboxEndpoint(request: Request, env: { INBOX_TOKEN?: string }): Promise<Response | null> {
   const url = new URL(request.url);
+  if (url.pathname === "/__inbox/gmail") return gmailEndpoint(request);
   if (url.pathname !== "/__inbox" && url.pathname !== "/__inbox/tick") return null;
   const token = env.INBOX_TOKEN ?? "";
   const given = (request.headers.get("authorization") ?? "").replace(/^Bearer /, "");
@@ -374,6 +437,29 @@ export async function inboxEndpoint(request: Request, env: { INBOX_TOKEN?: strin
     return new Response(res.message, { status: res.status });
   } catch (e) {
     console.error("Inbound email failed:", e);
+    return new Response("Failed", { status: 500 });
+  }
+}
+
+/** POST /__inbox/gmail from a practice's Gmail helper script: JSON body, `Authorization: Bearer <practice key>`. */
+async function gmailEndpoint(request: Request): Promise<Response> {
+  if (request.method !== "POST") return new Response("Not found", { status: 404 });
+  const size = Number(request.headers.get("content-length") ?? 0);
+  if (size > MAX_EMAIL_BYTES * 1.4) return new Response("Too large", { status: 413 });
+  const text = await request.text();
+  if (text.length > MAX_EMAIL_BYTES * 1.4) return new Response("Too large", { status: 413 });
+  let body: GmailUpload;
+  try {
+    body = JSON.parse(text) as GmailUpload;
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+  try {
+    const token = (request.headers.get("authorization") ?? "").replace(/^Bearer /, "").trim();
+    const res = await receiveFromGmail(token, body);
+    return new Response(res.message, { status: res.status });
+  } catch (e) {
+    console.error("Gmail helper upload failed:", e);
     return new Response("Failed", { status: 500 });
   }
 }

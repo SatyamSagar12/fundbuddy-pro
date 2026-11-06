@@ -6,7 +6,8 @@ import { db } from "@/server/db/client";
 import { withPractice } from "@/server/db/scope";
 import { inboxMessages, memberships, practices, transactions, users } from "@/server/db/schema";
 import { newWrappedDataKey, practiceCrypto, randomBytes, toB64url } from "@/server/crypto";
-import { ensureInboxCode, inboxEndpoint, passwordsFor, receiveEmail, retryWaiting } from "@/server/inbox";
+import { ensureInboxCode, inboxEndpoint, issueGmailToken, passwordsFor, receiveEmail, receiveFromGmail, retryWaiting } from "@/server/inbox";
+import { gmailHelperScript } from "@/lib/gmail-helper-script";
 import { withTestDb } from "./helpers";
 
 const MASTER = toB64url(randomBytes(32));
@@ -156,6 +157,34 @@ describe("email import", () => {
     const kfin = mime({ from: "KFintech <mailback@kfintech.com>", subject: "MFSD201", files: [{ name: "kfin.zip", bytes: fixture("cams-feed-aes256.zip") }] });
     await withTestDb(() => receiveEmail(address, kfin));
     expect((await withTestDb(messages)).at(-1)).toMatchObject({ status: "imported" });
+  });
+
+  it("takes mailbacks from the Gmail helper with the practice's key, once each", async () => {
+    const key = await withTestDb(() => issueGmailToken(P));
+    const zip = Buffer.from(fixture("cams-feed-aes256.zip")).toString("base64");
+    const upload = { messageId: "18f00aa11bb22cc3", from: "CAMS <donotreply@camsonline.com>", subject: "WBR2 via helper", attachments: [{ name: "WBR2.zip", data: zip }] };
+    expect((await withTestDb(() => receiveFromGmail("fgh_" + "x".repeat(43), upload))).status).toBe(401);
+    const first = await withTestDb(() => receiveFromGmail(key, upload));
+    expect(first).toMatchObject({ status: 200, message: "Mailback imported" });
+    const last = (await withTestDb(messages)).at(-1)!;
+    expect(last).toMatchObject({ subject: "WBR2 via helper", status: "imported" });
+    expect((last.detail as { gmailId: string }).gmailId).toBe("18f00aa11bb22cc3");
+    expect((await withTestDb(() => receiveFromGmail(key, upload))).message).toBe("Already received");
+    expect((await withTestDb(() => receiveFromGmail(key, { ...upload, messageId: "x2", from: "spam@evil.test" }))).message).toMatch(/not from a registrar/);
+    // A new key replaces the old one.
+    const key2 = await withTestDb(() => issueGmailToken(P));
+    expect((await withTestDb(() => receiveFromGmail(key, { ...upload, messageId: "x3" }))).status).toBe(401);
+    const res = await withTestDb(() =>
+      inboxEndpoint(new Request("https://folio.test/__inbox/gmail", { method: "POST", headers: { authorization: `Bearer ${key2}` }, body: JSON.stringify({ ...upload, messageId: "x4" }) }), {}),
+    );
+    expect(res?.status).toBe(200);
+  });
+
+  it("writes a Gmail helper script that is valid JavaScript", async () => {
+    const script = gmailHelperScript("https://folio.example/__inbox/gmail", "fgh_" + "a".repeat(43));
+    expect(() => new Function(script)).not.toThrow();
+    expect(script).toContain('const FOLIO_URL = "https://folio.example/__inbox/gmail"');
+    expect(script).toContain("/\\.(zip|dbf|csv|txt|xls|xlsx)$/i");
   });
 
   it("only trusts password-protected files", async () => {

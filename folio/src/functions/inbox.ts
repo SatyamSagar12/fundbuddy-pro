@@ -7,7 +7,9 @@ import { withPractice } from "@/server/db/scope";
 import { inboxMessages, memberships, practices } from "@/server/db/schema";
 import { cryptoFor, requireMember, scopeOf } from "@/server/member";
 import { audit } from "@/server/security";
-import { ensureInboxCode, inboundDomain, processMessage, retryWaiting, type InboxDetail } from "@/server/inbox";
+import { ensureInboxCode, inboundDomain, issueGmailToken, processMessage, retryWaiting, type InboxDetail } from "@/server/inbox";
+import { gmailHelperScript } from "@/lib/gmail-helper-script";
+import { appUrl } from "@/server/env";
 import { emailWorks } from "@/server/mailer";
 
 export const getInbox = createServerFn({ method: "GET" }).handler(async () => {
@@ -15,7 +17,7 @@ export const getInbox = createServerFn({ method: "GET" }).handler(async () => {
   const domain = inboundDomain();
   const code = domain ? await ensureInboxCode(m.practiceId) : null;
   const [p] = await db()
-    .select({ cams: practices.mailbackPasswordEnc, kfin: practices.kfintechPasswordEnc })
+    .select({ cams: practices.mailbackPasswordEnc, kfin: practices.kfintechPasswordEnc, gmail: practices.gmailTokenHash })
     .from(practices)
     .where(eq(practices.id, m.practiceId));
   const messages = await withPractice(scopeOf(m), (tx) =>
@@ -41,6 +43,8 @@ export const getInbox = createServerFn({ method: "GET" }).handler(async () => {
   return {
     address: code && domain ? `${code}@${domain}` : null,
     hasPassword: { cams: Boolean(p?.cams), kfintech: Boolean(p?.kfin) },
+    hasGmailHelper: Boolean(p?.gmail),
+    viaHelper: rows.filter((r) => (r.detail as InboxDetail).gmailId).length,
     canRenew: m.role === "owner",
     /** Forwarding confirmed: a registrar email has arrived since Gmail's confirmation (or at all). */
     forwarding: Boolean(mailbackAfter) || rows.some((r) => r.kind !== "forward_confirm"),
@@ -118,3 +122,11 @@ export const setBriefingSetting = createServerFn({ method: "POST" })
       .where(and(eq(memberships.practiceId, m.practiceId), eq(memberships.userId, m.userId)));
     return { ok: true as const };
   });
+
+/** A fresh Gmail helper script for this practice (a new key: any older script stops working). */
+export const createGmailHelper = createServerFn({ method: "POST" }).handler(async () => {
+  const m = await requireMember(["owner", "staff"]);
+  const token = await issueGmailToken(m.practiceId);
+  await audit(m.practiceId, m.userId, "inbox.gmail_helper_created");
+  return { script: gmailHelperScript(`${appUrl()}/__inbox/gmail`, token) };
+});
