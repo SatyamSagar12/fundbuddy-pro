@@ -244,4 +244,15 @@ describe("CAS statements", () => {
     const [t] = await readTables("WebTrxns.xls", new TextEncoder().encode(html));
     expect(t!.rows).toEqual([{ FOLIO_NO: "1/2", SCHEME: "X & Y Fund", TRADDATE: "05-May-2025", AMOUNT: "1,000.00", TRXN_NATUR: "Purchase" }]);
   });
+
+  it("opens password-protected .xls files (RC4 and RC4 CryptoAPI)", async () => {
+    for (const kind of ["rc4", "cryptoapi"]) {
+      const bytes = fixture(`cams-feed-${kind}.xls`);
+      const tables = await readTables(`f-${kind}.xls`, bytes, "folio123");
+      const trxns = tables.find((t) => t.name.includes("Trxns"))!;
+      expect(trxns.rows[1]).toMatchObject({ TRADDATE: "2025-05-05", AMOUNT: "3000", PAN: "ZZRPK1001A" });
+      await expect(readTables(`f-${kind}.xls`, bytes, "wrong")).rejects.toMatchObject({ code: "wrong_password" });
+      await expect(readTables(`f-${kind}.xls`, bytes)).rejects.toMatchObject({ code: "password_needed" });
+    }
+  });
 });

@@ -6,7 +6,16 @@
  * like the .xlsx reader. Password-protected .xls files are refused with a plain message.
  */
 
-export class XlsError extends Error {}
+import { md5, sha1 } from "@noble/hashes/legacy.js";
+
+export class XlsError extends Error {
+  constructor(
+    message: string,
+    readonly code: "password_needed" | "wrong_password" | "unsupported" | "corrupt" = "corrupt",
+  ) {
+    super(message);
+  }
+}
 
 export type XlsSheet = { name: string; rows: string[][] };
 
@@ -97,8 +106,8 @@ function numberText(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 1e10) / 1e10);
 }
 
-export function readXls(bytes: Uint8Array): XlsSheet[] {
-  const wb = workbookStream(bytes);
+export function readXls(bytes: Uint8Array, password?: string): XlsSheet[] {
+  const wb = decryptIfNeeded(workbookStream(bytes), password);
   const v = new DataView(wb.buffer, wb.byteOffset, wb.byteLength);
   // Records, with CONTINUE records kept beside the one they continue (needed for the shared strings).
   type Rec = { type: number; data: Uint8Array; continues: Uint8Array[] };
@@ -111,7 +120,6 @@ export function readXls(bytes: Uint8Array): XlsSheet[] {
     else recs.push({ type, data, continues: [] });
     p += 4 + len;
   }
-  if (recs.some((r) => r.type === 0x002f)) throw new XlsError("This Excel file is password-protected. Open it in Excel, remove the password, and upload it again.");
   if (recs[0]?.type !== 0x0809) throw new XlsError("This Excel file is in a format the app can't read.");
 
   // Shared strings: each string may continue into the next CONTINUE record, which repeats the 8/16-bit flag.
@@ -263,4 +271,125 @@ function readUnicode(data: Uint8Array, offset: number, len: number): { text: str
 /** A sheet name: 1-byte length, then a unicode string body. */
 function readShort(data: Uint8Array, offset: number): string {
   return readUnicode(data, offset + 1, data[offset] ?? 0).text;
+}
+
+// ── Password-protected .xls (RC4, and RC4 CryptoAPI) ──────────────────────────
+// MS-XLS 2.2.10 and MS-OFFCRYPTO 2.3.6: record headers stay readable; record data is RC4-encrypted with a key that
+// changes every 1024 bytes of the stream, counted from the stream's start (headers included).
+
+const NEVER_ENCRYPTED = new Set([0x0809, 0x002f, 0x0194, 0x0195, 0x00e1, 0x0196, 0x0138]);
+const utf16 = (s: string) => {
+  const out = new Uint8Array(s.length * 2);
+  for (let i = 0; i < s.length; i++) {
+    out[i * 2] = s.charCodeAt(i) & 0xff;
+    out[i * 2 + 1] = s.charCodeAt(i) >> 8;
+  }
+  return out;
+};
+const concat = (...parts: Uint8Array[]) => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0;
+  for (const p of parts) {
+    out.set(p, o);
+    o += p.length;
+  }
+  return out;
+};
+const le32 = (n: number) => new Uint8Array([n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >>> 24) & 0xff]);
+
+function rc4(key: Uint8Array, length: number): Uint8Array {
+  const S = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) S[i] = i;
+  for (let i = 0, j = 0; i < 256; i++) {
+    j = (j + S[i]! + key[i % key.length]!) & 0xff;
+    [S[i], S[j]] = [S[j]!, S[i]!];
+  }
+  const out = new Uint8Array(length);
+  for (let k = 0, i = 0, j = 0; k < length; k++) {
+    i = (i + 1) & 0xff;
+    j = (j + S[i]!) & 0xff;
+    [S[i], S[j]] = [S[j]!, S[i]!];
+    out[k] = S[(S[i]! + S[j]!) & 0xff]!;
+  }
+  return out;
+}
+
+/** The block key maker for the file's encryption, after checking the password against the file's verifier. */
+function keyMaker(filepass: Uint8Array, password: string): (block: number) => Uint8Array {
+  const v = new DataView(filepass.buffer, filepass.byteOffset, filepass.byteLength);
+  if (v.getUint16(0, true) !== 1) throw new XlsError("This Excel file uses an old protection the app can't open. Open it in Excel, remove the password, and upload it again.", "unsupported");
+  const major = v.getUint16(2, true);
+  const minor = v.getUint16(4, true);
+  const pw = utf16(password);
+  if (major === 1 && minor === 1) {
+    const salt = filepass.subarray(6, 22);
+    const verifier = filepass.subarray(22, 38);
+    const verifierHash = filepass.subarray(38, 54);
+    const h0 = md5(pw).subarray(0, 5);
+    const buf = new Uint8Array(21 * 16);
+    for (let i = 0; i < 16; i++) buf.set(concat(h0, salt), i * 21);
+    const h1 = md5(buf).subarray(0, 5);
+    const make = (block: number) => md5(concat(h1, le32(block)));
+    const ks = rc4(make(0), 32);
+    const plain = concat(verifier, verifierHash).map((b, i) => b ^ ks[i]!);
+    const ok = md5(plain.subarray(0, 16)).every((b, i) => b === plain[16 + i]);
+    if (!ok) throw new XlsError("That password didn't open this Excel file.", "wrong_password");
+    return make;
+  }
+  if ((major === 2 || major === 3 || major === 4) && minor === 2) {
+    const headerSize = v.getUint32(10, true);
+    const header = 14;
+    let keyBits = v.getUint32(header + 16, true);
+    if (keyBits === 0) keyBits = 40;
+    const ver = header + headerSize;
+    const saltSize = v.getUint32(ver, true);
+    const salt = filepass.subarray(ver + 4, ver + 4 + saltSize);
+    const verifier = filepass.subarray(ver + 4 + saltSize, ver + 20 + saltSize);
+    const hashSize = v.getUint32(ver + 20 + saltSize, true);
+    const verifierHash = filepass.subarray(ver + 24 + saltSize, ver + 24 + saltSize + hashSize);
+    const h0 = sha1(concat(salt, pw));
+    const make = (block: number) => {
+      const h = sha1(concat(h0, le32(block)));
+      return keyBits === 40 ? concat(h.subarray(0, 5), new Uint8Array(11)) : h.subarray(0, keyBits / 8);
+    };
+    const ks = rc4(make(0), 16 + verifierHash.length);
+    const plain = concat(verifier, verifierHash).map((b, i) => b ^ ks[i]!);
+    const ok = sha1(plain.subarray(0, 16)).every((b, i) => b === plain[16 + i]);
+    if (!ok) throw new XlsError("That password didn't open this Excel file.", "wrong_password");
+    return make;
+  }
+  throw new XlsError("This Excel file uses a protection the app can't open yet. Open it in Excel, remove the password, and upload it again.", "unsupported");
+}
+
+/** The workbook stream with record data decrypted, when the file is password-protected; unchanged otherwise. */
+function decryptIfNeeded(wb: Uint8Array, password?: string): Uint8Array {
+  const v = new DataView(wb.buffer, wb.byteOffset, wb.byteLength);
+  let filepass: Uint8Array | null = null;
+  for (let p = 0; p + 4 <= wb.length; p += 4 + v.getUint16(p + 2, true)) {
+    if (v.getUint16(p, true) === 0x002f) {
+      filepass = wb.subarray(p + 4, p + 4 + v.getUint16(p + 2, true));
+      break;
+    }
+  }
+  if (!filepass) return wb;
+  if (!password) throw new XlsError("This Excel file is password-protected. Save the registrar's password in Settings.", "password_needed");
+  const make = keyMaker(filepass, password);
+  // Keystream for the whole stream, a fresh RC4 key every 1024 bytes.
+  const ks = new Uint8Array(wb.length);
+  for (let block = 0; block * 1024 < wb.length; block++) ks.set(rc4(make(block), Math.min(1024, wb.length - block * 1024)), block * 1024);
+  const out = new Uint8Array(wb);
+  for (let p = 0; p + 4 <= wb.length; ) {
+    const type = v.getUint16(p, true);
+    const len = v.getUint16(p + 2, true);
+    const start = p + 4 + (type === 0x0085 ? 4 : 0); // a sheet record's stream position stays readable
+    if (type === 0x002f) {
+      // Blank the protection record but keep its length, so the records after it still line up.
+      out[p] = 0;
+      out[p + 1] = 0;
+      out.fill(0, p + 4, p + 4 + len);
+    }
+    else if (!NEVER_ENCRYPTED.has(type)) for (let i = start; i < p + 4 + len; i++) out[i] = wb[i]! ^ ks[i]!;
+    p += 4 + len;
+  }
+  return out;
 }

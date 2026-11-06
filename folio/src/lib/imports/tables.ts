@@ -208,10 +208,12 @@ export async function readTables(name: string, bytes: Uint8Array, password?: str
   if (/\.xlsx$/i.test(name) || (isZip(bytes) && /\.xlsx$/i.test(name))) return [{ name, rows: await readXlsx(bytes) }];
   if (isXls(bytes)) {
     try {
-      return readXls(bytes)
+      return readXls(bytes, password)
         .filter((s) => s.rows.length)
         .map((s, i, all) => ({ name: all.length > 1 ? `${name} (${s.name})` : name, rows: toObjects(s.rows) }));
     } catch (e) {
+      // Password problems are reported like a ZIP's, so the right saved password is tried and asked for.
+      if (e instanceof XlsError && (e.code === "password_needed" || e.code === "wrong_password")) throw new ZipError(`${name}: ${e.message}`, e.code);
       throw new TableError(e instanceof XlsError ? `${name}: ${e.message}` : `${name} couldn't be read as an Excel file.`);
     }
   }

@@ -320,7 +320,8 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
       continue;
     }
     try {
-      const tables = protectedZip ? await readWithAny(f.name, bytes, passwords) : await readTables(f.name, bytes);
+      // Saved passwords open protected ZIPs and protected Excel files; an unprotected file reads with any of them.
+      const tables = passwords.length ? await readWithAny(f.name, bytes, passwords) : await readTables(f.name, bytes);
       const bySource = new Map<ImportSource, ImportTxn[]>();
       const notReports: string[] = [];
       const contacts: ContactRow[] = [];
