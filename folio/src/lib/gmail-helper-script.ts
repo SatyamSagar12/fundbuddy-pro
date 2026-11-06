@@ -16,6 +16,8 @@ const FOLIO_KEY = ${JSON.stringify(token)}; // Private to your practice. Don't s
 const SEARCH = "from:(camsonline.com OR kfintech.com OR karvy.com) has:attachment";
 
 function setup() {
+  // A fresh start: sends the last 90 days again (Folio skips what it already has).
+  PropertiesService.getScriptProperties().deleteAllProperties();
   ScriptApp.getProjectTriggers().forEach(function (t) { ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger("sendToFolio").timeBased().everyMinutes(15).create();
   sendToFolio();

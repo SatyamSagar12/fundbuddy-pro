@@ -128,8 +128,8 @@ Not in phase 1:
     table, with unmatched schemes listed at their invested amount.
 
 - **Registrar reports** (Import, owners and staff).
-  - Accepts CAMS and KFintech transaction reports as mailed: password ZIP, DBF, CSV/TXT or Excel (.xlsx). Old
-    .xls files must be saved as .xlsx first.
+  - Accepts CAMS and KFintech transaction reports as mailed: password ZIP, DBF, CSV/TXT or Excel (.xls and .xlsx;
+    "web page" .xls files too).
   - Columns are found by any of their known names, so report versions with renamed or reordered columns still
     read. A report missing a needed column is refused, naming what's missing.
   - Taxes, stamp duty, rejected rows and detail changes are left out, and listed.

@@ -180,6 +180,21 @@ describe("email import", () => {
     expect(res?.status).toBe(200);
   });
 
+  it("imports plain files from the Gmail helper (her own mailbox), and takes back emails it couldn't read before", async () => {
+    const key = await withTestDb(() => issueGmailToken(P));
+    const xls = Buffer.from(fixture("cams-feed.xls")).toString("base64");
+    const upload = { messageId: "18f00aa11bb22dd4", from: "donotreply@camsonline.com", subject: "Web Transactions", attachments: [{ name: "WebTrxns.xls", data: xls }] };
+    expect((await withTestDb(() => receiveFromGmail(key, upload))).message).toBe("Mailback imported");
+    expect((await withTestDb(() => receiveFromGmail(key, upload))).message).toBe("Already received");
+    // An email recorded as not imported is taken again when re-sent.
+    const csv = Buffer.from("NOTHING,USEFUL\n1,2").toString("base64");
+    const odd = { ...upload, messageId: "18f00aa11bb22ee5", attachments: [{ name: "odd.csv", data: csv }] };
+    expect((await withTestDb(() => receiveFromGmail(key, odd))).message).toBe("Mailback ignored");
+    expect((await withTestDb(() => receiveFromGmail(key, odd))).message).toBe("Mailback ignored");
+    const ids = (await withTestDb(messages)).filter((m) => (m.detail as { gmailId?: string }).gmailId === "18f00aa11bb22ee5");
+    expect(ids).toHaveLength(1);
+  });
+
   it("writes a Gmail helper script that is valid JavaScript", async () => {
     const script = gmailHelperScript("https://folio.example/__inbox/gmail", "fgh_" + "a".repeat(43));
     expect(() => new Function(script)).not.toThrow();

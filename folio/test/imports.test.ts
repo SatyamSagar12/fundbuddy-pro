@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { readTables, readDelimited, TableError } from "@/lib/imports/tables";
 import { readZip, ZipError } from "@/lib/imports/zip";
+import { readXls } from "@/lib/imports/xls";
 import { detectRegistrar, readFeed } from "@/lib/imports/feed";
 import { classify, parseDate, parseNumber } from "@/lib/imports/normalise";
 import { casTransactions, parseCas } from "@/lib/imports/cas";
@@ -223,5 +224,24 @@ describe("CAS statements", () => {
       ["HDFC Flexi Cap Fund - Growth Plan", "INF179K01608", 9.95, true, 3],
       ["Parag Parikh Flexi Cap Fund - Regular Plan - Growth", "INF879O01019", 126.603, true, 2],
     ]);
+  });
+
+  it("reads old-style Excel (.xls) reports, dates included", async () => {
+    const tables = await readTables("cams-feed.xls", new Uint8Array(readFileSync(new URL("./fixtures/imports/cams-feed.xls", import.meta.url))));
+    const trxns = tables.find((t) => t.name.includes("Trxns"))!;
+    expect(trxns.rows).toHaveLength(2);
+    expect(trxns.rows[0]).toMatchObject({ FOLIO_NO: "1234567/89", TRADDATE: "2025-04-01", AMOUNT: "15000", PAN: "ZZRPK1001A", MOBILE_NO: "9829011111" });
+    const feed = readFeed(trxns.rows);
+    expect(feed.txns.map((t) => [t.type, t.date, t.amount])).toEqual([["purchase", "2025-04-01", 15000], ["sip", "2025-05-05", 3000]]);
+    // 1,500 strings: the shared-string table spans several records.
+    const filler = readXls(fixture("cams-feed.xls")).find((s) => s.name === "Filler")!;
+    expect(filler.rows).toHaveLength(1500);
+    expect(filler.rows.at(-1)).toEqual(["Unique string number 01499 with some padding text ÄÖÜ"]);
+  });
+
+  it("reads registrar .xls files that are really web pages", async () => {
+    const html = "<html><body><p>Report</p><table><tr><th>FOLIO_NO</th><th>SCHEME</th><th>TRADDATE</th><th>AMOUNT</th><th>TRXN_NATUR</th></tr><tr><td>1/2</td><td>X &amp; Y Fund</td><td>05-May-2025</td><td>1,000.00</td><td>Purchase</td></tr></table></body></html>";
+    const [t] = await readTables("WebTrxns.xls", new TextEncoder().encode(html));
+    expect(t!.rows).toEqual([{ FOLIO_NO: "1/2", SCHEME: "X & Y Fund", TRADDATE: "05-May-2025", AMOUNT: "1,000.00", TRXN_NATUR: "Purchase" }]);
   });
 });

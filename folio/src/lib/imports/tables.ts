@@ -5,6 +5,7 @@
  *  - XLSX (Excel 2007+). The old binary .xls isn't read: choose DBF, CSV or XLSX when requesting the report.
  * ZIPs are opened first (./zip.ts). Everything here also runs in the browser.
  */
+import { readXls, XlsError } from "./xls";
 import { isZip, readZip, ZipError } from "./zip";
 
 export type Row = Record<string, string>;
@@ -206,12 +207,34 @@ export async function readTables(name: string, bytes: Uint8Array, password?: str
   }
   if (/\.xlsx$/i.test(name) || (isZip(bytes) && /\.xlsx$/i.test(name))) return [{ name, rows: await readXlsx(bytes) }];
   if (isXls(bytes)) {
-    throw new TableError(`${name} is an old-style Excel (.xls) file. Request the report as DBF, CSV or XLSX, or save it as .xlsx and upload again.`);
+    try {
+      return readXls(bytes)
+        .filter((s) => s.rows.length)
+        .map((s, i, all) => ({ name: all.length > 1 ? `${name} (${s.name})` : name, rows: toObjects(s.rows) }));
+    } catch (e) {
+      throw new TableError(e instanceof XlsError ? `${name}: ${e.message}` : `${name} couldn't be read as an Excel file.`);
+    }
   }
   if (isDbf(bytes)) return [{ name, rows: readDbf(bytes) }];
   const text = new TextDecoder("utf-8").decode(bytes);
   if (text.includes("\u0000")) throw new TableError(`${name} isn't a file the app can read.`);
+  // Some registrar ".xls" files are really web pages with a table in them.
+  if (/<table[\s>]/i.test(text)) return [{ name, rows: readHtmlTable(text) }];
   return [{ name, rows: readDelimited(text) }];
+}
+
+/** The biggest HTML table in a page, as rows (header first). */
+export function readHtmlTable(html: string): Row[] {
+  let best: string[][] = [];
+  for (const t of html.matchAll(/<table[^>]*>([\s\S]*?)<\/table>/gi)) {
+    const rows: string[][] = [];
+    for (const tr of t[1]!.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
+      const cells = [...tr[1]!.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((c) => xmlText(c[1]!.replace(/<br\s*\/?>/gi, " ")).replace(/&nbsp;/g, " ").trim());
+      if (cells.length) rows.push(cells);
+    }
+    if (rows.length > best.length) best = rows;
+  }
+  return toObjects(best);
 }
 
 export { ZipError };

@@ -148,9 +148,9 @@ function RegistrarImport() {
     <div className="space-y-5">
       <Card className="space-y-4">
         <FilePicker
-          accept=".zip,.dbf,.csv,.txt,.xlsx"
+          accept=".zip,.dbf,.csv,.txt,.xls,.xlsx"
           label="Choose a CAMS or KFintech transaction report"
-          hint="ZIP (as mailed), DBF, CSV, TXT or Excel (.xlsx). Old .xls files: save as .xlsx first."
+          hint="ZIP (as mailed), DBF, CSV, TXT or Excel (.xls or .xlsx)."
           onFile={(f) => {
             setFile(f);
             setLoaded(null);

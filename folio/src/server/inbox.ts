@@ -208,11 +208,13 @@ export async function receiveFromGmail(token: string, body: GmailUpload): Promis
   const domain = from.split("@")[1] ?? "";
   if (!REGISTRAR_DOMAINS.test(domain)) return { status: 200, message: "Ignored: not from a registrar" };
   const [dup] = await db()
-    .select({ id: inboxMessages.id })
+    .select({ id: inboxMessages.id, status: inboxMessages.status })
     .from(inboxMessages)
     .where(and(eq(inboxMessages.practiceId, practice.id), sql`${inboxMessages.detail}->>'gmailId' = ${gmailId}`))
     .limit(1);
-  if (dup) return { status: 200, message: "Already received" };
+  // Received before but not imported (e.g. a file type Folio couldn't read then): take it again.
+  if (dup && dup.status === "imported") return { status: 200, message: "Already received" };
+  if (dup) await db().delete(inboxMessages).where(eq(inboxMessages.id, dup.id));
   const files: StoredFile[] = [];
   for (const a of body.attachments ?? []) {
     const name = String(a.name ?? "attachment").slice(0, 200);
@@ -302,19 +304,23 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
   let needsPassword = false;
   let failed = false;
   let added = 0;
+  // Emails from the Gmail helper come from the practice's own mailbox, where Gmail has checked the sender; the
+  // forwarding address can be written to by anyone, so there only password-protected ZIPs are trusted.
+  const fromOwnGmail = Boolean((msg.detail as InboxDetail).gmailId);
   for (const f of files) {
     const bytes = fromB64(f.data);
-    if (!isZip(bytes) || !readZip(bytes).some((e) => e.encrypted)) {
-      out.push({ name: f.name, status: "skipped", note: "Not password-protected, so not trusted. Upload it on the Import page if you expected it." });
+    const protectedZip = isZip(bytes) && readZip(bytes).some((e) => e.encrypted);
+    if (!protectedZip && !fromOwnGmail) {
+      out.push({ name: f.name, status: "skipped", note: "Not password-protected, so not trusted. Use the Gmail helper, or upload it on the Import page." });
       continue;
     }
-    if (!passwords.length) {
+    if (protectedZip && !passwords.length) {
       needsPassword = true;
       out.push({ name: f.name, status: "failed", note: "Save the mailback ZIP password in Settings to open it." });
       continue;
     }
     try {
-      const tables = await readWithAny(f.name, bytes, passwords);
+      const tables = protectedZip ? await readWithAny(f.name, bytes, passwords) : await readTables(f.name, bytes);
       const bySource = new Map<ImportSource, ImportTxn[]>();
       const notReports: string[] = [];
       const contacts: ContactRow[] = [];
