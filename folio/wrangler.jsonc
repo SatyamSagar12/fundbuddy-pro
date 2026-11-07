@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "anqulas-folio",
+  // Our own entry: TanStack Start's fetch handler plus cron jobs (and, later, inbound mail and queues).
+  "main": "src/server.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Keep variables set in the Cloudflare dashboard when a new version is published (secrets are always kept).
+  "keep_vars": true,
+  "observability": { "enabled": true },
+  // Runs the Worker near the database (Mumbai) rather than near each visitor.
+  "placement": { "mode": "smart" },
+  // APP_URL (the site's address for links in emails) is optional: without it, the address the request came in
+  // on is used. Set it once folio.anqulas.com is connected.
+  "vars": {
+    "MAIL_FROM": "Anqulas Folio <no-reply@anqulas.com>",
+    "SES_REGION": "ap-south-1"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      // "folio-db" in Cloudflare → Storage & databases → Hyperdrive (Supabase Mumbai, session pooler, caching off).
+      "id": "4e3fe3d2fe994df690344dadff36a906",
+      // Used by `vite dev` only; production goes through Hyperdrive.
+      "localConnectionString": "postgres://folio_owner:folio_owner@127.0.0.1:5432/folio"
+    }
+  ],
+  "triggers": {
+    // Hourly housekeeping (expired sessions, rate-limit rows). NAV import is added in phase 2.
+    "crons": ["17 * * * *"]
+  }
+}

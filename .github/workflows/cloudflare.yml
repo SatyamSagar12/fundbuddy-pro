@@ -8,7 +8,7 @@ name: Cloudflare website
 on:
   push:
     branches: [main]
-    paths-ignore: ["**.md", "android/**"]
+    paths-ignore: ["**.md", "android/**", "folio/**"]
   workflow_dispatch:
 
 concurrency:

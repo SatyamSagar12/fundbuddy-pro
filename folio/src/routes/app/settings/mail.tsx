@@ -1,0 +1,406 @@
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { Check, Copy, RefreshCw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { createGmailHelper, deleteInboxMessage, getInbox, renewInboxAddress, retryInboxMessage, saveMailbackPassword } from "@/functions/inbox";
+import { Button, Card, Field, Notice, textLink } from "@/components/ui";
+import { firstIssue, SOMETHING_WRONG } from "@/lib/errors";
+
+export const Route = createFileRoute("/app/settings/mail")({
+  loader: () => getInbox(),
+  head: () => ({ meta: [{ title: "Email import · Anqulas Folio" }] }),
+  component: MailSettings,
+});
+
+const STATUS: Record<string, { label: string; tone: string }> = {
+  imported: { label: "Imported", tone: "text-good" },
+  needs_password: { label: "Needs the ZIP password", tone: "text-warn" },
+  failed: { label: "Couldn't import", tone: "text-bad" },
+  ignored: { label: "Not imported", tone: "text-muted" },
+  waiting: { label: "Opening…", tone: "text-muted" },
+};
+
+const FILTER_FROM = "camsonline.com OR kfintech.com OR karvy.com";
+
+function MailSettings() {
+  const d = Route.useLoaderData();
+  const router = useRouter();
+  const [msg, setMsg] = useState<{ tone: "good" | "error"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(text);
+      setTimeout(() => setCopied(null), 1600);
+    } catch {
+      /* the text is selectable anyway */
+    }
+  }
+
+  async function savePassword(e: React.FormEvent<HTMLFormElement>, registrar: "cams" | "kfintech") {
+    e.preventDefault();
+    const form = e.currentTarget;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await saveMailbackPassword({ data: { registrar, password: String(new FormData(form).get("password") ?? "") } });
+      form.reset();
+      const who = registrar === "cams" ? "CAMS" : "KFintech";
+      // One email per request, so each stays within the server's per-request time limit.
+      let imported = 0;
+      let unfinished = 0;
+      for (const [i, id] of res.waiting.entries()) {
+        setMsg({ tone: "good", text: `${who} password saved. Trying waiting emails again: ${i + 1} of ${res.waiting.length}…` });
+        try {
+          const r = await retryInboxMessage({ data: { id } });
+          if (r.ok && r.status === "imported") imported++;
+        } catch {
+          unfinished++;
+        }
+      }
+      const parts = [`${who} password saved.`];
+      if (imported) parts.push(`${imported} waiting email${imported > 1 ? "s" : ""} imported.`);
+      if (unfinished) parts.push(`${unfinished} couldn't be finished this time; use 🔄 to try ${unfinished > 1 ? "them" : "it"} again.`);
+      setMsg({ tone: unfinished && !imported ? "error" : "good", text: parts.join(" ") });
+      await router.invalidate();
+    } catch (err) {
+      setMsg({ tone: "error", text: firstIssue(err) ?? SOMETHING_WRONG });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function act(fn: () => Promise<unknown>, done: string) {
+    setBusy(true);
+    try {
+      await fn();
+      setMsg({ tone: "good", text: done });
+      await router.invalidate();
+    } catch (err) {
+      setMsg({ tone: "error", text: err instanceof Error && err.message === "not opened" ? "That password didn't open it either. The note under the email says what was tried." : SOMETHING_WRONG });
+      await router.invalidate();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const CopyButton = ({ text, label }: { text: string; label: string }) => (
+    <button type="button" onClick={() => void copy(text)} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-line px-3 text-[13px] font-medium hover:bg-soft" aria-label={label}>
+      {copied === text ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />} {copied === text ? "Copied" : "Copy"}
+    </button>
+  );
+
+  return (
+    <div className="space-y-5">
+      {msg && <Notice tone={msg.tone}>{msg.text}</Notice>}
+
+      <Card>
+        <h2 className="text-lg font-semibold">Automatic import from email</h2>
+        <p className="mt-1 text-[15px] text-muted">
+          CAMS and KFintech email you transaction reports every day. Forward them to Folio once, and every client's
+          transactions, SIPs and values update by themselves, with nothing to upload.
+        </p>
+        {d.address ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-field p-3">
+            <code className="min-w-0 flex-1 truncate text-[15px] font-medium select-all">{d.address}</code>
+            <CopyButton text={d.address} label="Copy your Folio address" />
+          </div>
+        ) : (
+          <Notice>
+            Email import is being switched on for Folio. Until then, upload the files on the{" "}
+            <Link to="/app/import" className={textLink}>
+              Import page
+            </Link>
+            .
+          </Notice>
+        )}
+        {d.address && (
+          <p className="mt-2 text-[13px] text-muted">
+            Your private Folio address. Only emails from CAMS and KFintech with a ZIP that opens with your password are
+            imported; everything else is ignored.
+            {d.canRenew && (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className="link-draw font-medium text-bronze"
+                  disabled={busy}
+                  onClick={() => {
+                    if (confirm("Make a new address? The old one stops working, and you'll need to set up Gmail forwarding again.")) void act(() => renewInboxAddress(), "New address made. Update your Gmail forwarding.");
+                  }}
+                >
+                  Make a new address
+                </button>
+              </>
+            )}
+          </p>
+        )}
+        {d.working && <p className="mt-3 text-[15px] font-medium text-good">✓ Working: emails are arriving and importing.</p>}
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold">Mailback ZIP passwords</h2>
+        <p className="mt-1 mb-4 text-[15px] text-muted">
+          The passwords you gave CAMS and KFintech for your mailback reports. If both are the same, fill only CAMS.
+          They are stored encrypted, and only used to open these files.
+        </p>
+        <div className="space-y-4">
+          {(
+            [
+              ["cams", "CAMS password"],
+              ["kfintech", "KFintech password"],
+            ] as const
+          ).map(([registrar, label]) => (
+            <form key={registrar} onSubmit={(e) => void savePassword(e, registrar)} className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[14rem] flex-1">
+                <Field
+                  label={d.hasPassword[registrar] ? `${label} (saved; type to change)` : label}
+                  name="password"
+                  type="password"
+                  autoComplete="off"
+                  placeholder={d.hasPassword[registrar] ? "Saved ••••••••" : registrar === "kfintech" ? "Only if different from CAMS" : ""}
+                />
+              </div>
+              <Button type="submit" disabled={busy}>
+                {busy ? "Saving…" : "Save"}
+              </Button>
+            </form>
+          ))}
+        </div>
+      </Card>
+
+      <GmailHelperCard has={d.hasGmailHelper} count={d.viaHelper} />
+
+      {d.address && (
+        <Card>
+          <h2 className="text-lg font-semibold">Or: Gmail forwarding</h2>
+          <p className="mt-1 text-[15px] text-muted">Do this on a computer, in the Gmail account where CAMS and KFintech send your reports.</p>
+          <ol className="mt-4 space-y-5 text-[15px]">
+            <li>
+              <b>1. Add Folio as a forwarding address.</b> Open{" "}
+              <a href="https://mail.google.com/mail/u/0/#settings/fwdandpop" target="_blank" rel="noreferrer" className={textLink}>
+                Gmail → Settings → Forwarding and POP/IMAP
+              </a>
+              , click <i>Add a forwarding address</i>, paste your Folio address, then <i>Next</i> and <i>Proceed</i>. Leave
+              the rest of that page as it is: only CAMS and KFintech emails will be forwarded (step 3).
+            </li>
+            <li>
+              <b>2. Confirm it.</b> Gmail sends a code to Folio. It appears here:
+              {d.forwarding && !d.confirmation ? (
+                <div className="mt-2 rounded-xl border border-good/30 bg-good-soft p-3 font-medium text-good">✓ Done: emails are being forwarded.</div>
+              ) : d.confirmation ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-good/30 bg-good-soft p-3">
+                  <span className="text-[13px] text-muted">
+                    Gmail's confirmation{d.confirmation.requester ? ` for ${d.confirmation.requester}` : ""}
+                  </span>
+                  {d.confirmation.code && (
+                    <>
+                      <code className="text-xl font-semibold tracking-widest select-all">{d.confirmation.code}</code>
+                      <CopyButton text={d.confirmation.code} label="Copy the code" />
+                    </>
+                  )}
+                  {d.confirmation.link && (
+                    <a
+                      href={d.confirmation.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={d.confirmation.code ? textLink : "inline-flex h-9 items-center rounded-full bg-text px-4 text-[14px] font-medium text-paper"}
+                    >
+                      {d.confirmation.code ? "or confirm with Gmail's link" : "Confirm with Gmail"}
+                    </a>
+                  )}
+                  {!d.confirmation.code && (
+                    <span className="w-full text-[13px] text-muted">
+                      Gmail sent a link instead of a code. Open it once; when Gmail says the confirmation worked, you're done.
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-line p-3 text-muted">
+                  Waiting for Gmail's code…
+                  <button type="button" className="inline-flex items-center gap-1 font-medium text-bronze" onClick={() => void router.invalidate()}>
+                    <RefreshCw size={14} aria-hidden /> Check again
+                  </button>
+                </div>
+              )}
+              <span className="mt-2 block">
+                Back in Gmail, type the code under <i>Forwarding</i> and click <i>Verify</i>.
+              </span>
+            </li>
+            <li>
+              <b>3. Forward only CAMS and KFintech emails.</b> In Gmail's search bar, click the options icon on the right
+              and put this in <i>From</i>:
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-field p-3">
+                <code className="min-w-0 flex-1 truncate select-all">{FILTER_FROM}</code>
+                <CopyButton text={FILTER_FROM} label="Copy the filter" />
+              </div>
+              <span className="mt-2 block">
+                Click <i>Create filter</i>, tick <i>Forward it to</i>, choose your Folio address, and click <i>Create filter</i>.
+              </span>
+            </li>
+            <li>
+              <b>4. Ask for daily reports.</b> On the CAMS and KFintech distributor websites, schedule the daily
+              transaction mailback (CAMS: WBR2; KFintech: MFSD201) to come to this Gmail, with the passwords you saved
+              above. From then on, each day's transactions arrive and import by themselves.
+            </li>
+          </ol>
+        </Card>
+      )}
+
+      <Card className="!p-0">
+        <div className="px-5 pt-5 pb-2">
+          <h2 className="text-lg font-semibold">Received emails</h2>
+        </div>
+        {d.messages.length === 0 ? (
+          <p className="px-5 pb-5 text-muted">None yet.</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {d.messages.map((m) => (
+              <li key={m.id} className="px-5 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{m.subject || "(no subject)"}</p>
+                    <p className="truncate text-[13px] text-muted">
+                      {m.from} · {new Date(m.receivedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-sm font-medium ${STATUS[m.status]?.tone ?? "text-muted"}`}>
+                      {STATUS[m.status]?.label ?? m.status}
+                      {m.status === "imported" && m.detail.added !== undefined ? ` · ${m.detail.added} new` : ""}
+                    </span>
+                    {(m.status === "failed" || m.status === "needs_password") && (
+                      <button type="button" disabled={busy} aria-label="Try again" className="rounded-lg p-2 text-muted hover:text-text" onClick={() => void act(() => retryInboxMessage({ data: { id: m.id } }), "Tried again.")}>
+                        <RefreshCw size={16} />
+                      </button>
+                    )}
+                    <button type="button" disabled={busy} aria-label="Delete" className="rounded-lg p-2 text-muted hover:text-bad" onClick={() => void act(() => deleteInboxMessage({ data: { id: m.id } }), "Deleted.")}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+                {m.status === "needs_password" && (
+                  <form
+                    className="mt-2 flex flex-wrap items-center gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.currentTarget;
+                      const password = String(new FormData(form).get("password") ?? "").trim();
+                      if (!password) return;
+                      void act(async () => {
+                        const r = await retryInboxMessage({ data: { id: m.id, password } });
+                        form.reset();
+                        if (!r.ok || r.status === "needs_password") throw new Error("not opened");
+                      }, "That password worked. Save it above as the registrar's password, so future emails open by themselves.");
+                    }}
+                  >
+                    <input
+                      name="password"
+                      type="password"
+                      autoComplete="off"
+                      placeholder="Try another password for this email"
+                      className="min-w-0 flex-1 rounded-lg border border-line bg-field px-3 py-1.5 text-sm"
+                    />
+                    <button type="submit" disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium">
+                      Try
+                    </button>
+                  </form>
+                )}
+                {(m.detail.files?.length || m.detail.note) && (
+                  <ul className="mt-1 space-y-0.5 text-[13px] text-muted">
+                    {m.detail.note && <li>{m.detail.note}</li>}
+                    {m.detail.files?.map((f, i) => (
+                      <li key={i}>
+                        {f.name}:{" "}
+                        {f.status === "imported"
+                          ? [
+                              f.added || !f.detailsUpdated ? `${f.added ?? 0} new transactions` : null,
+                              f.alreadyIn ? `${f.alreadyIn} already in` : null,
+                              f.newClients ? `${f.newClients} new clients` : null,
+                              f.detailsUpdated ? `${f.detailsUpdated} clients' contact details filled` : null,
+                              f.detailsAdded ? `${f.detailsAdded} clients added from details` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")
+                          : f.note}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/** The Gmail helper: the most reliable way, for Gmail accounts where forwarding doesn't reach Folio. */
+function GmailHelperCard({ has, count }: { has: boolean; count: number }) {
+  const [script, setScript] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  async function make() {
+    if (has && !confirm("Make a new script? The one already running in Gmail will stop working until you replace it.")) return;
+    setBusy(true);
+    try {
+      setScript((await createGmailHelper()).script);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold">Gmail helper (recommended)</h2>
+      <p className="mt-1 text-[15px] text-muted">
+        A small script that runs inside the Gmail where CAMS and KFintech send reports, under your own Google account. Every
+        15 minutes it sends new mailbacks to Folio, and the first time it also brings the last 90 days. OFA and your other
+        filters keep working. This works even when Gmail forwarding doesn't.
+      </p>
+      {has && !script && (
+        <p className="mt-3 text-[15px] font-medium text-good">
+          ✓ Set up{count ? `: ${count} email${count > 1 ? "s" : ""} received through it` : ". Waiting for its first run"}.
+        </p>
+      )}
+      {!script ? (
+        <Button className="mt-4" onClick={() => void make()} disabled={busy}>
+          {busy ? "Making…" : has ? "Make a new script" : "Make my Gmail script"}
+        </Button>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => {
+                void navigator.clipboard.writeText(script).then(() => setCopied(true));
+              }}
+            >
+              {copied ? "Copied" : "Copy the script"}
+            </Button>
+            <span className="text-[13px] text-muted">It holds your practice's private key: don't share it.</span>
+          </div>
+          <textarea readOnly value={script} rows={6} className="w-full rounded-xl border border-line bg-field p-3 font-mono text-[12px]" aria-label="Gmail helper script" />
+          <ol className="list-decimal space-y-1.5 pl-5 text-[15px]">
+            <li>
+              On a computer, sign in to the Gmail that gets CAMS/KFintech reports, then open{" "}
+              <a href="https://script.google.com/home/projects/create" target="_blank" rel="noreferrer" className={textLink}>
+                script.google.com → New project
+              </a>
+              .
+            </li>
+            <li>Delete what's in the editor, paste the script, and click the Save icon.</li>
+            <li>
+              In the bar above the code, choose <b>setup</b> and click <b>Run</b>.
+            </li>
+            <li>
+              Google asks for permission: <b>Review permissions</b> → choose the account → <b>Advanced</b> → <b>Go to … (unsafe)</b> →{" "}
+              <b>Allow</b>. ("Unsafe" only means Google hasn't reviewed a script you made yourself.)
+            </li>
+            <li>Done. Within a few minutes, mailbacks appear below under Received emails.</li>
+          </ol>
+        </div>
+      )}
+    </Card>
+  );
+}

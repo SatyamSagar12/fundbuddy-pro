@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.anqulas.fundvault",
+      "sha256_cert_fingerprints": ["40:72:3B:75:10:19:82:75:4B:A6:E4:FC:9B:D8:35:5B:D9:CE:40:C9:7E:EC:5F:93:AC:A5:46:97:FD:38:17:EB"]
+    }
+  }
+]

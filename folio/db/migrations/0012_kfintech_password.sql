@@ -1,0 +1,1 @@
+ALTER TABLE "practices" ADD COLUMN "kfintech_password_enc" text;

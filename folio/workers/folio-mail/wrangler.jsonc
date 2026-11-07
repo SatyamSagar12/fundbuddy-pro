@@ -1,0 +1,13 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "folio-mail",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "vars": {
+    // Folio's address. Change to https://folio.anqulas.com once that domain is connected.
+    "FOLIO_URL": "https://anqulas-folio.pages.dev"
+  },
+  // INBOX_TOKEN is a secret: `npx wrangler secret put INBOX_TOKEN -c workers/folio-mail/wrangler.jsonc`
+  "triggers": { "crons": ["*/30 * * * *"] }
+}
