@@ -105,6 +105,7 @@ export function readZip(bytes: Uint8Array): ZipEntry[] {
       size,
       encrypted,
       read: async (password?: string) => {
+        const wrong = `That password didn't open the ZIP (${method === 99 ? `AES-${aes ? 64 + aes.strength * 64 : ""} lock` : "standard ZIP lock"}). Check it and try again.`;
         if (view.getUint32(local, true) !== 0x04034b50) throw new ZipError("The ZIP file is damaged.", "corrupt");
         const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
         let data = bytes.subarray(start, start + compSize);
@@ -123,7 +124,7 @@ export function readZip(bytes: Uint8Array): ZipEntry[] {
           // The 12-byte header's last byte must match the CRC's top byte (or the time, with a data descriptor).
           const check = plain[11];
           const expected = flags & 8 ? (modTime >>> 8) & 0xff : crc >>> 24;
-          if (check !== expected) throw new ZipError("That password didn't open the ZIP. Check it and try again.", "wrong_password");
+          if (check !== expected) throw new ZipError(wrong, "wrong_password");
           data = plain.subarray(12);
         }
         let out: Uint8Array;
@@ -132,11 +133,11 @@ export function readZip(bytes: Uint8Array): ZipEntry[] {
           try {
             out = await inflateRaw(data);
           } catch {
-            throw new ZipError(encrypted ? "That password didn't open the ZIP. Check it and try again." : "The ZIP file is damaged.", encrypted ? "wrong_password" : "corrupt");
+            throw new ZipError(encrypted ? wrong : "The ZIP file is damaged.", encrypted ? "wrong_password" : "corrupt");
           }
         } else throw new ZipError(`This ZIP uses a compression method (${actualMethod}) the app can't read.`, "unsupported");
         if (checkCrc && crc32(out) !== crc) {
-          throw new ZipError(encrypted ? "That password didn't open the ZIP. Check it and try again." : "The ZIP file is damaged.", encrypted ? "wrong_password" : "corrupt");
+          throw new ZipError(encrypted ? wrong : "The ZIP file is damaged.", encrypted ? "wrong_password" : "corrupt");
         }
         return out;
       },
@@ -181,7 +182,7 @@ async function aesDecrypt(data: Uint8Array, password: string, strength: 1 | 2 | 
   const encKey = derived.subarray(0, keyLen);
   const macKey = derived.subarray(keyLen, keyLen * 2);
   if (derived[keyLen * 2] !== verifier[0] || derived[keyLen * 2 + 1] !== verifier[1]) {
-    throw new ZipError("That password didn't open the ZIP. Check it and try again.", "wrong_password");
+    throw new ZipError(`That password didn't open the ZIP (AES-${64 + strength * 64} lock). Check it and try again.`, "wrong_password");
   }
   const hmacKey = await crypto.subtle.importKey("raw", macKey as BufferSource, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
   const sig = new Uint8Array(await crypto.subtle.sign("HMAC", hmacKey, body as BufferSource)).subarray(0, 10);

@@ -70,6 +70,9 @@ function workbookStream(bytes: Uint8Array): Uint8Array {
     entries.push({ name, type: dir[off + 66]!, start: dv.getUint32(off + 116, true), size: dv.getUint32(off + 120, true) });
   }
   const book = entries.find((e) => e.type === 2 && (e.name === "Workbook" || e.name === "Book"));
+  if (!book && entries.some((e) => e.name === "EncryptedPackage")) {
+    throw new XlsError("This is a password-locked Excel 2007+ file (AES lock), which Folio can't open yet.", "unsupported");
+  }
   if (!book) throw new XlsError("This Excel file has no workbook inside.");
   if (book.size >= miniCutoff) return readChain(book.start, book.size);
   // Small streams live in the mini stream, addressed through the mini FAT.
@@ -333,7 +336,7 @@ function keyMaker(filepass: Uint8Array, password: string): (block: number) => Ui
     const ks = rc4(make(0), 32);
     const plain = concat(verifier, verifierHash).map((b, i) => b ^ ks[i]!);
     const ok = md5(plain.subarray(0, 16)).every((b, i) => b === plain[16 + i]);
-    if (!ok) throw new XlsError("That password didn't open this Excel file.", "wrong_password");
+    if (!ok) throw new XlsError("That password didn't open this Excel file (RC4 lock).", "wrong_password");
     return make;
   }
   if ((major === 2 || major === 3 || major === 4) && minor === 2) {
@@ -355,7 +358,7 @@ function keyMaker(filepass: Uint8Array, password: string): (block: number) => Ui
     const ks = rc4(make(0), 16 + verifierHash.length);
     const plain = concat(verifier, verifierHash).map((b, i) => b ^ ks[i]!);
     const ok = sha1(plain.subarray(0, 16)).every((b, i) => b === plain[16 + i]);
-    if (!ok) throw new XlsError("That password didn't open this Excel file.", "wrong_password");
+    if (!ok) throw new XlsError(`That password didn't open this Excel file (RC4 CryptoAPI ${keyBits}-bit lock).`, "wrong_password");
     return make;
   }
   throw new XlsError("This Excel file uses a protection the app can't open yet. Open it in Excel, remove the password, and upload it again.", "unsupported");

@@ -6,7 +6,7 @@ import { db } from "@/server/db/client";
 import { withPractice } from "@/server/db/scope";
 import { inboxMessages, memberships, practices, transactions, users } from "@/server/db/schema";
 import { newWrappedDataKey, practiceCrypto, randomBytes, toB64url } from "@/server/crypto";
-import { ensureInboxCode, inboxEndpoint, issueGmailToken, passwordsFor, receiveEmail, receiveFromGmail, retryWaiting } from "@/server/inbox";
+import { ensureInboxCode, inboxEndpoint, issueGmailToken, passwordsFor, processMessage, receiveEmail, receiveFromGmail, retryWaiting } from "@/server/inbox";
 import { gmailHelperScript } from "@/lib/gmail-helper-script";
 import { withTestDb } from "./helpers";
 
@@ -117,11 +117,21 @@ describe("email import", () => {
       await db().update(practices).set({ mailbackPasswordEnc: await pc.encrypt("mailback_password", P, "wrong") }).where(eq(practices.id, P));
       expect(await retryWaiting(P)).toBe(0);
     });
-    expect((await withTestDb(messages)).at(-1)!.status).toBe("needs_password");
+    last = (await withTestDb(messages)).at(-1)!;
+    expect(last.status).toBe("needs_password");
+    // The note names the lock and what was tried, by length only.
+    const note = (last.detail as { files: { note: string }[] }).files[0]!.note;
+    expect(note).toContain("AES-256 lock");
+    expect(note).toContain("the saved CAMS password (5 characters)");
+    expect(note).not.toContain("wrong");
 
+    // A password typed for just this email: a wrong one keeps it waiting, the right one imports it.
+    expect(await withTestDb(() => processMessage(P, last.id, pc, "nope"))).toBe("needs_password");
+    expect((((await withTestDb(messages)).at(-1)!.detail) as { files: { note: string }[] }).files[0]!.note).toContain("the password you typed (4 characters)");
+    expect(await withTestDb(() => processMessage(P, last.id, pc, "folio123"))).toBe("imported");
     await withTestDb(async () => {
       await db().update(practices).set({ mailbackPasswordEnc: await pc.encrypt("mailback_password", P, "folio123") }).where(eq(practices.id, P));
-      expect(await retryWaiting(P)).toBe(1);
+      expect(await retryWaiting(P)).toBe(0);
     });
     last = (await withTestDb(messages)).at(-1)!;
     expect(last).toMatchObject({ status: "imported", payloadEnc: null });

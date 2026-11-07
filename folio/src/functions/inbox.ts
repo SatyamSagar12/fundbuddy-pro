@@ -84,13 +84,13 @@ export const renewInboxAddress = createServerFn({ method: "POST" }).handler(asyn
 });
 
 export const retryInboxMessage = createServerFn({ method: "POST" })
-  .validator((input: unknown) => z.object({ id: z.uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ id: z.uuid(), password: z.string().trim().min(1).max(100).optional() }).parse(input))
   .handler(async ({ data }) => {
     const m = await requireMember(["owner", "staff"]);
     // Row-level security: the message must be this practice's.
     const [mine] = await withPractice(scopeOf(m), (tx) => tx.select({ id: inboxMessages.id }).from(inboxMessages).where(eq(inboxMessages.id, data.id)));
     if (!mine) return { ok: false as const, error: "Not found." };
-    const status = await processMessage(m.practiceId, data.id);
+    const status = await processMessage(m.practiceId, data.id, undefined, data.password);
     return { ok: true as const, status };
   });
 

@@ -77,8 +77,9 @@ function MailSettings() {
       await fn();
       setMsg({ tone: "good", text: done });
       await router.invalidate();
-    } catch {
-      setMsg({ tone: "error", text: SOMETHING_WRONG });
+    } catch (err) {
+      setMsg({ tone: "error", text: err instanceof Error && err.message === "not opened" ? "That password didn't open it either. The note under the email says what was tried." : SOMETHING_WRONG });
+      await router.invalidate();
     } finally {
       setBusy(false);
     }
@@ -279,6 +280,33 @@ function MailSettings() {
                     </button>
                   </div>
                 </div>
+                {m.status === "needs_password" && (
+                  <form
+                    className="mt-2 flex flex-wrap items-center gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = e.currentTarget;
+                      const password = String(new FormData(form).get("password") ?? "").trim();
+                      if (!password) return;
+                      void act(async () => {
+                        const r = await retryInboxMessage({ data: { id: m.id, password } });
+                        form.reset();
+                        if (!r.ok || r.status === "needs_password") throw new Error("not opened");
+                      }, "That password worked. Save it above as the registrar's password, so future emails open by themselves.");
+                    }}
+                  >
+                    <input
+                      name="password"
+                      type="password"
+                      autoComplete="off"
+                      placeholder="Try another password for this email"
+                      className="min-w-0 flex-1 rounded-lg border border-line bg-field px-3 py-1.5 text-sm"
+                    />
+                    <button type="submit" disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium">
+                      Try
+                    </button>
+                  </form>
+                )}
                 {(m.detail.files?.length || m.detail.note) && (
                   <ul className="mt-1 space-y-0.5 text-[13px] text-muted">
                     {m.detail.note && <li>{m.detail.note}</li>}

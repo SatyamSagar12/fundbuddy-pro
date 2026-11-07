@@ -289,7 +289,7 @@ async function readWithAny(name: string, bytes: Uint8Array, passwords: string[])
 }
 
 /** Opens and imports one stored email. Returns its new status. */
-export async function processMessage(practiceId: string, messageId: string, pc?: PracticeCrypto): Promise<string> {
+export async function processMessage(practiceId: string, messageId: string, pc?: PracticeCrypto, tryPassword?: string): Promise<string> {
   pc ??= await cryptoOf(practiceId);
   const [msg] = await db()
     .select()
@@ -297,7 +297,16 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
     .where(and(eq(inboxMessages.id, messageId), eq(inboxMessages.practiceId, practiceId)));
   if (!msg?.payloadEnc) return msg?.status ?? "missing";
   const files = JSON.parse(await pc.decrypt("inbox_payload", messageId, msg.payloadEnc)) as StoredFile[];
-  const passwords = passwordsFor(msg.fromAddress, await mailbackPasswords(practiceId, pc));
+  const saved = await mailbackPasswords(practiceId, pc);
+  const savedList = passwordsFor(msg.fromAddress, saved);
+  // A password typed for just this email is tried first.
+  const passwords = tryPassword ? [...new Set([tryPassword, ...savedList])] : savedList;
+  // What was tried, for the note when nothing opens (lengths only, so a typo or stray space shows without the password).
+  const tried = [
+    tryPassword ? `the password you typed (${[...tryPassword].length} characters)` : null,
+    saved.cams && savedList.includes(saved.cams) ? `the saved CAMS password (${[...saved.cams].length} characters)` : null,
+    saved.kfintech && savedList.includes(saved.kfintech) && saved.kfintech !== saved.cams ? `the saved KFintech password (${[...saved.kfintech].length} characters)` : null,
+  ].filter(Boolean).join(" and ");
   const member = await ownerMember(practiceId);
 
   const out: InboxFile[] = [];
@@ -364,7 +373,13 @@ export async function processMessage(practiceId: string, messageId: string, pc?:
     } catch (e) {
       if (e instanceof ZipError && (e.code === "wrong_password" || e.code === "password_needed")) {
         needsPassword = true;
-        out.push({ name: f.name, status: "failed", note: `The saved ${/(kfintech|karvy)/i.test(msg.fromAddress) ? "KFintech" : "CAMS"} password didn't open this ZIP. Check it in Settings.` });
+        const what = e.message.replace(/^.*?(That password didn't open [^.]*)\..*$/s, "$1").replace(/^That password didn't open /, "");
+        const inner = e.message.match(/^(.+?): That password/)?.[1];
+        out.push({
+          name: f.name,
+          status: "failed",
+          note: e.code === "wrong_password" ? `Couldn't open ${inner ? `${inner} in it, ` : ""}${what}, with ${tried}. Try another password below.` : e.message,
+        });
       } else {
         failed = true;
         out.push({ name: f.name, status: "failed", note: e instanceof ZipError || e instanceof TableError ? e.message : "Couldn't read this file." });
